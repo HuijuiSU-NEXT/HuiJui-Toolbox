@@ -1,3 +1,4 @@
+
 <div align="center">
 
 # 🚀 HuiJui Toolbox v6.0
@@ -17,7 +18,7 @@
 
 ## 📸 界面预览
 
-<img width="1432" height="911" alt="image" src="https://github.com/user-attachments/assets/bebaa2c6-e7ab-47c2-b1c6-e18f50d9c425" />
+<img width="1436" height="905" alt="image" src="https://github.com/user-attachments/assets/29bd2827-b9d9-4311-8cca-97a5b50e6f49" />
 
 
 ---
@@ -52,3 +53,43 @@
 ```bash
 git clone https://github.com/hhcdxii-ship-it/New-repository.git
 cd New-repository
+```
+
+**2. 安装依赖**
+```bash
+pip install -r requirements.txt
+```
+
+**3. 补充底层依赖 (重要)**
+由于 GitHub 限制，仓库未包含大文件。请自行下载 `adb.exe`、`fastboot.exe`、`ffmpeg` 等工具，放入根目录的 `bin` 文件夹中。
+
+**4. 运行程序**
+```bash
+python main_final.py
+```
+
+**5. 打包 EXE**
+```bash
+python -m nuitka --standalone --onefile --assume-yes-for-downloads --include-package-data=flet --include-data-dir=bin=bin --include-data-dir=assets=assets --windows-icon-from-ico=assets/logo.ico --windows-disable-console --output-dir=dist --output-filename=HuiJui_Toolbox.exe main_final.py
+```
+
+---
+
+## 💬 联系与交流 (Contact)
+
+- 👤 作者：喜羊羊灰灰菜單
+- 🏠 酷安主页：[点击访问](https://www.coolapk.com/u/43549687)
+- 🐙 GitHub 主页：[点击访问](https://github.com/hhcdxii-ship-it)
+- 💬 官方 QQ 群：[点击加群](https://qm.qq.com/q/bVWVFT0PYY)
+
+---
+
+## ⚠️ 免责声明 (Disclaimer)
+
+刷机、临时 Root、救砖等操作均存在一定风险。使用本工具造成的任何设备损坏、数据丢失，作者概不负责。请在使用前务必备份重要数据，并确保了解相关操作步骤。
+
+---
+*Made with ❤️ and ☕ by HuiJui.*
+```
+
+---
