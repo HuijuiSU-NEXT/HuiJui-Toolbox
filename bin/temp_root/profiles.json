@@ -1,0 +1,290 @@
+{
+  "prague": {
+    "name": "Redmi K90 Max",
+    "kmi": "android16-6.12",
+    "payload_dir": "prague/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "myron": {
+    "name": "Redmi K90 Pro Max / POCO F8 Ultra",
+    "kmi": "android16-6.12",
+    "payload_dir": "myron/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "annibale": {
+    "name": "Redmi K90 / POCO F8 Pro",
+    "kmi": "android16-6.12",
+    "payload_dir": "annibale/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "rothko": {
+    "name": "Redmi K90 Ultra",
+    "kmi": "android15-6.6",
+    "payload_dir": "rothko/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "ingres": {
+    "name": "Redmi K50G / POCO F4 GT",
+    "kmi": "android12-5.10",
+    "payload_dir": "ingres/android12-5.10",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "pudding": {
+    "name": "Xiaomi 17",
+    "kmi": "android16-5",
+    "payload_dir": "pudding/android16-5",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "dada": {
+    "name": "Xiaomi 15",
+    "kmi": "android15-6.6",
+    "payload_dir": "dada/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "haotian": {
+    "name": "Xiaomi 15 Pro",
+    "kmi": "android15-6.6",
+    "payload_dir": "haotian/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "miro": {
+    "name": "Redmi K80 Pro",
+    "kmi": "android15-6.6",
+    "payload_dir": "miro/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "dali": {
+    "name": "Redmi K80 Ultra",
+    "kmi": "android15-6.6",
+    "payload_dir": "dali/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "dash": {
+    "name": "Redmi Turbo 5 Max / POCO X8 Pro Max",
+    "kmi": "android16-6.12",
+    "payload_dir": "dash/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "chenfeng": {
+    "name": "Xiaomi Civi 5 Pro",
+    "kmi": "android15-6.6",
+    "payload_dir": "chenfeng/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "manet": {
+    "name": "Redmi K70 Pro",
+    "kmi": "android14-6.1",
+    "payload_dir": "manet/android14-6.1",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "flourite": {
+    "name": "Redmi Note 15 Pro+ 5G",
+    "kmi": "android15-8",
+    "payload_dir": "flourite/android15-8",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "garnet": {
+    "name": "Redmi Note 13 Pro 5G / POCO X6 5G",
+    "kmi": "android14-6.1",
+    "payload_dir": "garnet/android14-6.1",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "PLR110": {
+    "name": "OnePlus Ace 6T",
+    "kmi": "android16-5",
+    "payload_dir": "PLR110/android16-5",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "CPH2745": {
+    "name": "OnePlus 15",
+    "kmi": "android16-5",
+    "payload_dir": "CPH2745/android16-5",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "PLK110": {
+    "name": "OnePlus 15 (6.12.58)",
+    "kmi": "android16-6",
+    "payload_dir": "PLK110/android16-6",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "IN2060": {
+    "name": "OnePlus 13",
+    "kmi": "android15-8",
+    "payload_dir": "IN2060/android15-8",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "PLZ110": {
+    "name": "OnePlus 15T",
+    "kmi": "android16-6.12",
+    "payload_dir": "PLZ110/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "PFEM00": {
+    "name": "OPPO Find X5 Pro",
+    "kmi": "android12-5.10",
+    "payload_dir": "PFEM00/android12-5.10",
+    "exploit_file": "exploit_guard",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "z10t": {
+    "name": "iQOO Z10 Turbo",
+    "kmi": "android14-6.1",
+    "payload_dir": "z10t/android14-6.1",
+    "exploit_file": "preload_z10t.so",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "V2453A": {
+    "name": "iQOO Z10 Turbo Pro",
+    "kmi": "android14-6.1",
+    "payload_dir": "V2453A/android14-6.1",
+    "exploit_file": "preload_neo11.so",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "V2408A": {
+    "name": "iQOO 13",
+    "kmi": "android15-6.6",
+    "payload_dir": "V2408A/android15-6.6",
+    "exploit_file": "preload_neo11.so",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "V2520A": {
+    "name": "iQOO Neo11",
+    "kmi": "android15-6.6",
+    "payload_dir": "V2520A/android15-6.6",
+    "exploit_file": "preload_neo11.so",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "V2463A": {
+    "name": "iQOO Neo10 Pro+",
+    "kmi": "android15-6.6",
+    "payload_dir": "V2463A/android15-6.6",
+    "exploit_file": "preload_neo11.so",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "pd2415": {
+    "name": "vivo X200",
+    "kmi": "android15-6.6",
+    "payload_dir": "pd2415/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "SM-S938N": {
+    "name": "Galaxy S25 Ultra",
+    "kmi": "android15-6.6",
+    "payload_dir": "SM-S938N/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "SM-S9280": {
+    "name": "Galaxy S24 Ultra",
+    "kmi": "android14-6.1",
+    "payload_dir": "SM-S9280/android14-6.1",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "dm3q": {
+    "name": "Galaxy S23 Ultra",
+    "kmi": "android13-5.15",
+    "payload_dir": "dm3q/android13-5.15",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "m3q": {
+    "name": "Galaxy S26 Ultra",
+    "kmi": "android16-6.12",
+    "payload_dir": "m3q/android16-6.12",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "frankel": {
+    "name": "Pixel 10",
+    "kmi": "android15-6.6",
+    "payload_dir": "frankel/android15-6.6",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "caiman": {
+    "name": "Pixel 9 Pro",
+    "kmi": "android15-6.1",
+    "payload_dir": "caiman/android15-6.1",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "husky": {
+    "name": "Pixel 8 Pro",
+    "kmi": "android14-6.1",
+    "payload_dir": "husky/android14-6.1",
+    "exploit_file": "exploit",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "NX789J": {
+    "name": "Red Magic 10 Pro",
+    "kmi": "android15-8",
+    "payload_dir": "NX789J/android15-8",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  },
+  "meizu21": {
+    "name": "MEIZU 21",
+    "kmi": "android14-6.1",
+    "payload_dir": "meizu21/android14-6.1",
+    "exploit_file": "ghostlock-arm64",
+    "ksud_file": "ksud",
+    "ko_file": "kernelsu.ko"
+  }
+}

@@ -1,0 +1,113 @@
+import flet as ft
+import os
+import re
+from core_api import CFG
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def build_settings_page(page: ft.Page, theme_color):
+    state = {
+        "theme_color": CFG.get("theme_color", "#39C5BB"),
+        "ui_material": CFG.get("ui_material", "default"),
+        "card_opacity": CFG.get("card_opacity", 0.15)
+    }
+
+    def show_snackbar(msg):
+        page.snack_bar = ft.SnackBar(content=ft.Text(msg), bgcolor=theme_color)
+        page.snack_bar.open = True
+        page.update()
+
+    color_input = ft.TextField(value=state["theme_color"], label="自定义 HEX 颜色", width=200, bgcolor=getattr(page, "ui_style", {}).get("card_bg", ft.Colors.with_opacity(0.05, ft.Colors.WHITE)), color="white", border_color=ft.Colors.with_opacity(0.2, theme_color))
+    color_preview = ft.Container(width=40, height=40, border_radius=8, bgcolor=state["theme_color"])
+
+    def apply_color(e):
+        hex_val = color_input.value.strip()
+        if re.match(r'^#[0-9a-fA-F]{6}$', hex_val):
+            state["theme_color"] = hex_val
+            color_preview.bgcolor = hex_val
+            CFG.set("theme_color", hex_val)
+            CFG.save()
+            show_snackbar("颜色已应用，正在刷新...")
+            if hasattr(page, "refresh_main_ui"):
+                page.refresh_main_ui(tab_index=4)
+        else:
+            color_input.error_text = "格式错误"
+        page.update()
+
+    color_input.on_submit = apply_color
+
+    material_dropdown = ft.Dropdown(
+        label="UI 材质风格",
+        value=state["ui_material"],
+        width=300,
+        bgcolor="#1A233A", # 固定深色底防止渲染透明
+        color="white",
+        options=[
+            ft.dropdown.Option("default", "默认 (纯色/清晰)"),
+            ft.dropdown.Option("frosted", "毛玻璃 (半透明白)"),
+            ft.dropdown.Option("liquid", "液态玻璃 (主题色微光)"),
+        ],
+        on_change=lambda e: apply_material(e.control.value)
+    )
+
+    def apply_material(val):
+        state["ui_material"] = val
+        CFG.set("ui_material", val)
+        CFG.save()
+        show_snackbar(f"材质已切换: {val}")
+        if hasattr(page, "refresh_main_ui"):
+            page.refresh_main_ui(tab_index=4)
+
+    opacity_slider = ft.Slider(min=0.05, max=0.8, divisions=15, value=state["card_opacity"], active_color=theme_color, label="{value:.2f}")
+    def on_opacity_change(e):
+        state["card_opacity"] = opacity_slider.value
+        CFG.set("card_opacity", opacity_slider.value)
+        CFG.save()
+        if hasattr(page, "refresh_main_ui"):
+            page.refresh_main_ui(tab_index=4)
+    opacity_slider.on_change = on_opacity_change
+
+    def make_card(title, icon, content_list):
+        return ft.Container(
+            content=ft.Column([
+                ft.Row([ft.Icon(icon, color=theme_color, size=20), ft.Text(title, size=16, weight=ft.FontWeight.BOLD, color="white")]),
+                ft.Divider(color=ft.Colors.with_opacity(0.2, ft.Colors.WHITE), height=10),
+                *content_list
+            ], spacing=15),
+            bgcolor=getattr(page, "ui_style", {}).get("card_bg", ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+            border=getattr(page, "ui_style", {}).get("card_border", ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE))),
+            border_radius=15, padding=20
+        )
+
+    # 彻底放弃 ListView，用可滚动 Column 替代，防止高度崩塌
+    scrollable_content = ft.Column([
+        make_card("主题色强化", ft.Icons.COLOR_LENS, [
+            ft.Row([color_input, color_preview, ft.ElevatedButton("应用", on_click=apply_color, bgcolor=theme_color, color="black")]),
+        ]),
+        ft.Container(height=10),
+        make_card("UI 材质风格", ft.Icons.LAYERS, [
+            ft.Text("选择全局界面渲染材质，切换后立即生效。", size=12, color=ft.Colors.GREY_400),
+            ft.Row([material_dropdown]),
+        ]),
+        ft.Container(height=10),
+        make_card("视觉特效", ft.Icons.AUTO_AWESOME, [
+            ft.Row([
+                ft.Column([
+                    ft.Text("卡片透明度", size=14, color="white"),
+                    ft.Text("调节卡片背景透明度", size=11, color=ft.Colors.GREY_500)
+                ]),
+                ft.Container(expand=True),
+                ft.Container(content=opacity_slider, width=300)
+            ])
+        ]),
+        ft.Container(height=20),
+    ], scroll=ft.ScrollMode.AUTO, spacing=10)
+
+    return ft.Container(
+        content=ft.Column([
+            ft.Row([ft.Icon(ft.Icons.PALETTE, color=theme_color, size=28), ft.Text("个性化设置", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="Microsoft YaHei")]),
+            ft.Container(height=10),
+            scrollable_content
+        ], expand=True),
+        expand=True, padding=20
+    )

@@ -1,0 +1,53 @@
+﻿[Version]
+Signature           = " NT$"
+Class               = AndroidUsbDeviceClass
+ClassGuid           = {3F966BD9-FA04-4ec5-991C-D326973B5128}
+Provider            = %ProviderName%
+CatalogFile.NT      = androidwinusb86.cat
+CatalogFile.NTAMD64 = androidwinusba64.cat
+DriverVer           = 08/28/2014, 13.0.0000.0000
+
+[ClassInstall32]
+Addreg = AndroidUsbClassReg
+
+[AndroidUsbClassReg]
+HKR,,,0,%ClassName%
+HKR,,Icon,,-5
+
+[Manufacturer]
+%ProviderName% = Google, NTx86, NTamd64
+
+[Google.NTx86]
+%SingleAdbInterface%        = USB_Install, USB\VID_18D1&PID_4EE1
+%CompositeAdbInterface%     = USB_Install, USB\VID_18D1&PID_4EE2
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_4EE0
+%SingleAdbInterface%        = USB_Install, USB\VID_2717&PID_FF40
+%SingleBootLoaderInterface% = USB_Install, USB\VID_2717&PID_FF48
+
+[Google.NTamd64]
+%SingleAdbInterface%        = USB_Install, USB\VID_18D1&PID_4EE1
+%CompositeAdbInterface%     = USB_Install, USB\VID_18D1&PID_4EE2
+%SingleBootLoaderInterface% = USB_Install, USB\VID_18D1&PID_4EE0
+%SingleAdbInterface%        = USB_Install, USB\VID_2717&PID_FF40
+%SingleBootLoaderInterface% = USB_Install, USB\VID_2717&PID_FF48
+
+[USB_Install]
+Include = winusb.inf
+Needs   = WINUSB.NT
+
+[USB_Install.Services]
+Include = winusb.inf
+Needs   = WINUSB.NT.Services
+
+[USB_Install.HW]
+AddReg = Dev_AddReg
+
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{F72FE0D4-CBCB-407d-8814-9ED673D0DD6B}"
+
+[Strings]
+ProviderName                = "Google, Inc."
+SingleAdbInterface          = "Android ADB Interface"
+CompositeAdbInterface       = "Android Composite ADB Interface"
+SingleBootLoaderInterface   = "Android Bootloader Interface"
+ClassName                   = "Android USB Devices"

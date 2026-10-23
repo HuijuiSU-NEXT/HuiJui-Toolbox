@@ -1,0 +1,60 @@
+import flet as ft
+import subprocess
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+
+def build_drivers_page(page: ft.Page, theme_color):
+    log_area = ft.TextField(multiline=True, read_only=True, expand=True, bgcolor=ft.Colors.BLACK, color=getattr(page, "ui_style", {}).get("log_color", "#00FFD1"), text_size=12, text_style=ft.TextStyle(font_family="Consolas"), border=ft.InputBorder.NONE)
+    log_container = ft.Container(content=log_area, bgcolor=getattr(page, "ui_style", {}).get("log_bg", "#05070A"), border_radius=12, padding=15, expand=True, border=ft.border.all(1, ft.Colors.with_opacity(0.15, theme_color)))
+
+    def log(msg):
+        log_area.value += msg + "\n"
+        page.update()
+
+    # 扫描驱动
+    drivers = []
+    if os.path.exists(BIN_DIR):
+        for f in os.listdir(BIN_DIR):
+            if f.endswith(".exe") and ("driver" in f.lower() or "setup" in f.lower() or "qcom" in f.lower() or "mtk" in f.lower()):
+                drivers.append(f)
+
+    def install_driver(e, exe_name):
+        log(f"\n> 正在启动底层驱动安装程序: {exe_name}")
+        log("💡 请在弹出的安装窗口中点击『下一步』完成安装。")
+        page.update()
+        exe_path = os.path.join(BIN_DIR, exe_name)
+        try:
+            # 提权启动
+            subprocess.Popen([exe_path], shell=True)
+        except Exception as ex:
+            log(f"❌ 启动失败: {ex}")
+
+    cards = []
+    if not drivers:
+        log("⚠️ 未在 bin 目录找到驱动安装包。")
+        cards.append(ft.Text("未找到驱动包，请将高通/MTK驱动.exe放入 bin 目录", color=ft.Colors.GREY_500))
+    else:
+        for d in drivers:
+            cards.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Icon(ft.Icons.SETTINGS_SUGGEST, color=theme_color),
+                        ft.Text(d, size=14, weight=ft.FontWeight.BOLD, color="white"),
+                        ft.Container(expand=True),
+                        ft.ElevatedButton("一键安装", icon=ft.Icons.INSTALL_DESKTOP, on_click=lambda e, name=d: install_driver(e, name), style=ft.ButtonStyle(bgcolor=theme_color, color="black"))
+                    ]),
+                    bgcolor=getattr(page, "ui_style", {}).get("card_bg", ft.Colors.with_opacity(0.05, ft.Colors.WHITE)), padding=15, border_radius=10
+                )
+            )
+
+    return ft.Container(
+        content=ft.Column([
+            ft.Row([ft.Icon(ft.Icons.BUILD, color=theme_color, size=28), ft.Text("驱动环境", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="Microsoft YaHei")]),
+            ft.Container(height=10),
+            ft.Container(content=ft.Column(cards, spacing=10), bgcolor=ft.Colors.with_opacity(0.02, ft.Colors.WHITE), border_radius=15, padding=15),
+            ft.Container(height=10),
+            log_container
+        ], expand=True), expand=True, padding=20
+    )

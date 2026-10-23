@@ -1,0 +1,21 @@
+# 忽略 bin 下的所有第三方二进制大文件
+bin/ffmpeg/
+bin/*.dll
+bin/*.exe
+bin/*.zip
+bin/scrcpy-server
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# 构建产物和本地配置
+dist/
+build/
+*.spec
+*.log
+data/*.db
+backups/
+temp_pull/

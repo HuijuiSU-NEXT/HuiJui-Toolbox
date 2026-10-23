@@ -1,0 +1,158 @@
+import flet as ft
+import subprocess
+import os
+import threading
+import xml.etree.ElementTree as ET
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+
+# 常见底层工具路径（用户需将 QFIL 或 SP Flash Tool 放入 bin 目录）
+QFIL_PATH = os.path.join(BIN_DIR, "QFIL", "QFIL.exe")
+SPFLASH_PATH = os.path.join(BIN_DIR, "SPFlashTool", "flash_tool.exe")
+
+def build_emergency_flash_page(page: ft.Page, theme_color):
+    log_area = ft.TextField(
+        multiline=True, read_only=True, expand=True, 
+        bgcolor=ft.Colors.TRANSPARENT, color=getattr(page, "ui_style", {}).get("log_color", "#00FFD1"), 
+        text_size=12, text_style=ft.TextStyle(font_family="Consolas"),
+        border=ft.InputBorder.NONE,
+    )
+    log_container = ft.Container(
+        content=log_area, bgcolor=getattr(page, "ui_style", {}).get("log_bg", "#05070A"), border_radius=12,
+        padding=15, expand=True,
+        border=ft.border.all(1, ft.Colors.with_opacity(0.15, theme_color))
+    )
+    
+    status_text = ft.Text("等待选择线刷包...", size=13, color=theme_color, weight=ft.FontWeight.BOLD)
+
+    def log(msg):
+        log_area.value += msg + "\n"
+        page.update()
+
+    # ================= 脚本解析与校验 =================
+    def parse_xml(xml_path):
+        """解析高通 rawprogram.xml，提取分区和镜像路径"""
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+            program_list = root.findall('program')
+            log(f"✅ 解析到 {len(program_list)} 个刷写指令：")
+            for prog in program_list[:5]: # 只显示前5个防止刷屏
+                label = prog.get('label', 'N/A')
+                filename = prog.get('filename', 'N/A')
+                log(f"  - {label}: {filename}")
+            if len(program_list) > 5:
+                log(f"  ... 等共 {len(program_list)} 个分区")
+            return True
+        except Exception as e:
+            log(f"❌ XML 解析失败: {e}")
+            return False
+
+    def parse_scatter(txt_path):
+        """解析 MTK scatter.txt，提取分区和物理地址"""
+        try:
+            with open(txt_path, 'r', encoding='utf-8', errors='ignore') as f:
+                lines = f.readlines()
+            partitions = []
+            for line in lines:
+                if line.startswith('partition_name'):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        name = parts[1]
+                        file_name = parts[3]
+                        partitions.append((name, file_name))
+            log(f"✅ 解析到 {len(partitions)} 个刷写分区：")
+            for name, file_name in partitions[:5]:
+                log(f"  - {name}: {file_name}")
+            if len(partitions) > 5:
+                log(f"  ... 等共 {len(partitions)} 个分区")
+            return True
+        except Exception as e:
+            log(f"❌ Scatter 解析失败: {e}")
+            return False
+
+    # ================= 文件选择与刷写 =================
+    file_picker = ft.FilePicker()
+    page.overlay.append(file_picker)
+    page.update()
+
+    def on_file_selected(e: ft.FilePickerResultEvent):
+        if not e.files:
+            return
+        
+        path = e.files[0].path
+        ext = os.path.splitext(path)[1].lower()
+        log(f"\n> 已选择脚本: {os.path.basename(path)}")
+        page.update()
+
+        if ext == '.xml':
+            log("> 检测到高通线刷包 XML 脚本")
+            if parse_xml(path):
+                log("\n💡 正在尝试调用 QFIL 进行底层刷写...")
+                if os.path.exists(QFIL_PATH):
+                    subprocess.Popen([QFIL_PATH], cwd=os.path.dirname(QFIL_PATH), shell=True)
+                    log("✅ QFIL 已启动，请手动选择端口和 XML 执行刷写。")
+                else:
+                    log("⚠️ 未找到 QFIL，请将 QFIL 放入 bin/QFIL 目录。")
+            else:
+                log("❌ XML 解析失败，请检查文件完整性。")
+
+        elif ext == '.txt':
+            log("> 检测到联发科 Scatter 文件")
+            if parse_scatter(path):
+                log("\n💡 正在尝试调用 SP Flash Tool 进行底层刷写...")
+                if os.path.exists(SPFLASH_PATH):
+                    subprocess.Popen([SPFLASH_PATH], cwd=os.path.dirname(SPFLASH_PATH), shell=True)
+                    log("✅ SP Flash Tool 已启动，请点击 Scatter-loading 选择文件刷写。")
+                else:
+                    log("⚠️ 未找到 SP Flash Tool，请将工具放入 bin/SPFlashTool 目录。")
+            else:
+                log("❌ Scatter 解析失败，请检查文件完整性。")
+        else:
+            log("❌ 不支持的脚本格式，请选择 .xml 或 .txt 文件。")
+        
+        status_text.value = "脚本解析完成"
+        status_text.color = ft.Colors.GREEN
+        page.update()
+
+    file_picker.on_result = on_file_selected
+
+    def pick_script(e):
+        file_picker.pick_files(allowed_extensions=["xml", "txt"])
+
+    # ================= UI 组装 =================
+    return ft.Container(
+        content=ft.Column([
+            ft.Row([
+                ft.Icon(ft.Icons.BUILD_CIRCLE, color=theme_color, size=28),
+                ft.Text("急救中心 · 底层线刷", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="Microsoft YaHei"),
+                ft.Container(expand=True),
+                status_text
+            ]),
+            ft.Container(height=5),
+            ft.Text("💡 适用于进不去系统、连不上 Fastboot 的“黑砖”。请选择高通 rawprogram.xml 或 MTK scatter.txt。", size=12, color=ft.Colors.GREY_400),
+            ft.Container(height=10),
+            
+            ft.Container(
+                content=ft.Row([
+                    ft.ElevatedButton(
+                        "选择线刷脚本 (.xml / .txt)", icon=ft.Icons.FOLDER_OPEN, 
+                        on_click=pick_script,
+                        style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=15)
+                    ),
+                    ft.Container(expand=True),
+                    ft.Text("支持高通 QFIL / 联发科 SP Flash Tool", size=12, color=ft.Colors.GREY_500)
+                ]),
+                bgcolor=getattr(page, "ui_style", {}).get("card_bg", ft.Colors.with_opacity(0.05, ft.Colors.WHITE)),
+                border=getattr(page, "ui_style", {}).get("card_border", ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE))),
+                border_radius=15, padding=20
+            ),
+            
+            ft.Container(height=10),
+            ft.Text("解析与底层操作日志", size=14, color=ft.Colors.GREY_400, weight=ft.FontWeight.BOLD, font_family="Microsoft YaHei"),
+            log_container
+        ], expand=True), 
+        expand=True, 
+        padding=20
+    )

@@ -1,0 +1,23 @@
+{
+  "theme": "dark",
+  "skip_wipe": false,
+  "disable_verity": true,
+  "auto_backup": true,
+  "auto_root_patch": true,
+  "dangerous_extra": [],
+  "confirm_dangerous": true,
+  "min_battery": 30,
+  "max_temp": 45,
+  "check_firmware_match": true,
+  "check_multi_device": true,
+  "theme_color": "#39C5BB",
+  "onboarded": true,
+  "bg_image": "",
+  "bg_opacity": 0.9,
+  "card_blur": 5,
+  "card_opacity": 0.49999999999999994,
+  "bg_blur": 0,
+  "ui_material": "liquid",
+  "blur_radius": 4,
+  "use_default_wallpaper": true
+}

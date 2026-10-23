@@ -1,0 +1,56 @@
+import flet as ft
+from core_api import CFG
+
+def get_ui_styles(theme_color):
+    material = CFG.get("ui_material", "default")
+    
+    if material == "frosted":
+        # 毛玻璃：半透明白色 + 模糊遮罩
+        return {
+            "type": "frosted",
+            "overlay_bg": ft.Colors.with_opacity(0.5, "#0D1017"), # 半透明遮罩
+            "overlay_blur": ft.Blur(30, 30, ft.BlurTileMode.MIRROR),
+            "nav_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+            "side_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+            "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+            "card_border": ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE)),
+            "log_bg": ft.Colors.with_opacity(0.2, ft.Colors.BLACK),
+            "log_color": "#00FFD1"
+        }
+    elif material == "liquid":
+        # 液态玻璃：主题色渐变 + 强模糊 + 发光边框
+        return {
+            "type": "liquid",
+            "overlay_bg": ft.LinearGradient(
+                colors=[ft.Colors.with_opacity(0.4, theme_color), ft.Colors.with_opacity(0.1, "#0D1017")]
+            ),
+            "overlay_blur": ft.Blur(40, 40, ft.BlurTileMode.MIRROR), # 更强模糊
+            "nav_bg": ft.Colors.with_opacity(0.1, theme_color),
+            "side_bg": ft.Colors.with_opacity(0.1, theme_color),
+            "card_bg": ft.LinearGradient(
+                colors=[ft.Colors.with_opacity(0.2, theme_color), ft.Colors.with_opacity(0.05, ft.Colors.WHITE)]
+            ),
+            "card_border": ft.border.all(2, theme_color),
+            "log_bg": ft.LinearGradient(
+                colors=[ft.Colors.with_opacity(0.15, theme_color), ft.Colors.with_opacity(0.05, ft.Colors.BLACK)]
+            ),
+            "log_color": theme_color
+        }
+    else:
+        # 默认
+        return {
+            "type": "default",
+            "overlay_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+            "overlay_blur": None,
+            "nav_bg": ft.Colors.with_opacity(0.2, "#0D1017"),
+            "side_bg": ft.Colors.with_opacity(0.2, "#0D1017"),
+            "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+            "card_border": ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+            "log_bg": ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+            "log_color": "#00FFD1"
+        }
+
+def setup_page_style(page: ft.Page):
+    theme_color = CFG.get("theme_color", "#39C5BB")
+    page.bgcolor = ft.Colors.TRANSPARENT # 页面必须透明
+    return theme_color

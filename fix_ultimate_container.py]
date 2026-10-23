@@ -1,0 +1,92 @@
+# fix_ultimate_container.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 彻底废弃之前所有的 bg_image 和 Stack 挂载
+# 直接从 main_container 开始
+old_init = '''    # 🚨 彻底解放 UI，废掉 Stack，直接挂载 UI 容器
+    main_container = ft.Container(expand=True, bgcolor=ft.Colors.TRANSPARENT)
+    page.add(main_container)
+    page.update()'''
+
+new_init = '''    # 🚨 终极绝杀：主容器直接充当画布
+    main_container = ft.Container(
+        expand=True, 
+        bgcolor="#0D1017", # 兜底深色
+        # 背景图将会在这里动态挂载
+    )
+    page.add(main_container)
+    page.update()'''
+
+if old_init in content:
+    content = content.replace(old_init, new_init)
+else:
+    # 暴力正则，干掉所有旧背景代码
+    content = re.sub(r'    # 🚨 终极物理镇压.*?page\.update\(\)', new_init, content, flags=re.DOTALL)
+
+# 2. 重写 update_wallpaper_hot，直接把图塞给 main_container
+old_hot = '''    def update_wallpaper_hot():
+        """直连系统底层，更新 page.decoration，无视 UI 树重构"""
+        import glob
+        import time
+        
+        all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        if all_files:
+            latest = max(all_files, key=os.path.getctime)
+            # 加上时间戳破缓存，保证秒切
+            src = f"{os.path.basename(latest)}?t={int(time.time())}"
+            page.decoration = ft.BoxDecoration(
+                image=ft.DecorationImage(src=src, fit=ft.ImageFit.COVER)
+            )
+            print(f"🖼️ 已更新系统级壁纸: {src}")
+        else:
+            page.decoration = None
+            print("❌ 未找到壁纸文件，清空背景")
+        page.update()'''
+
+new_hot = '''    def update_wallpaper_hot():
+        """终极方案：把背景图塞给 Container 的 image 属性，完美铺满"""
+        import glob
+        import time
+        
+        all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        if all_files:
+            latest = max(all_files, key=os.path.getctime)
+            # 加时间戳破缓存
+            src = f"{os.path.basename(latest)}?t={int(time.time())}"
+            
+            # 🚨 核心：直接给 main_container 赋 image
+            main_container.image = ft.DecorationImage(
+                src=src, 
+                fit=ft.ImageFit.COVER
+            )
+            main_container.bgcolor = None # 移除兜底底色，露出壁纸
+            print(f"🖼️ 已更新主容器壁纸: {src}")
+        else:
+            main_container.image = None
+            main_container.bgcolor = "#0D1017"
+            print("❌ 未找到壁纸文件，清空背景")
+        main_container.update()'''
+
+content = content.replace(old_hot, new_hot)
+
+# 3. 确保 build_main_ui 返回的 UI 是透明的，能透出主容器的背景
+old_return = '''        main_layout = ft.Row([nav_container, ft.VerticalDivider(width=1, color=ft.Colors.with_opacity(0.08, ft.Colors.WHITE)), content_area, side_panel], expand=True, spacing=0)
+        return ft.Container(content=main_layout, expand=True, bgcolor=ft.Colors.TRANSPARENT)'''
+
+new_return = '''        main_layout = ft.Row([nav_container, ft.VerticalDivider(width=1, color=ft.Colors.with_opacity(0.08, ft.Colors.WHITE)), content_area, side_panel], expand=True, spacing=0)
+        # UI 整体透明，透出底下的 main_container 壁纸
+        return ft.Container(content=main_layout, expand=True, bgcolor=ft.Colors.TRANSPARENT)'''
+
+content = content.replace(old_return, new_return)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("✅ 终极主容器底图方案注入成功！请运行 python main_final.py")
