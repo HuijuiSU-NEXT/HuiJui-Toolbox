@@ -17,7 +17,8 @@
 
 ## 📸 界面预览
 
-*(建议在这里放入你那张绝美的全屏动态壁纸截图，加上 Markdown 语法：`![界面预览](你的图片链接)`)*
+<img width="1432" height="911" alt="image" src="https://github.com/user-attachments/assets/bebaa2c6-e7ab-47c2-b1c6-e18f50d9c425" />
+
 
 ---
 
