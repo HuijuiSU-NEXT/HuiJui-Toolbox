@@ -1,0 +1,31 @@
+# force_clean_bom.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+print("⏳ 正在使用二进制物理清洗 BOM 和空字节...")
+
+try:
+    # 1. 以二进制模式读取
+    with open(main_path, "rb") as f:
+        data = f.read()
+    
+    # 2. 剥离 UTF-8 BOM (EF BB BF)
+    if data.startswith(b'\xef\xbb\xbf'):
+        data = data[3:]
+        print("✅ 已切除 UTF-8 BOM 头！")
+        
+    # 3. 清理可能存在的空字节 (Null bytes)
+    data = data.replace(b'\x00', b'')
+    
+    # 4. 顺便把刚才报错的 fit="contain" 强制修对
+    data = data.replace(b'fit="contain"', b'fit=ft.ImageFit.CONTAIN')
+
+    # 5. 以二进制模式写回（纯净的无 BOM 格式）
+    with open(main_path, "wb") as f:
+        f.write(data)
+        
+    print("✅ 物理清洗完毕！文件已完美恢复！")
+except Exception as e:
+    print(f"❌ 清洗失败: {e}")

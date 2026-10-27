@@ -1,0 +1,20 @@
+# fix_ban_bom.py
+import os
+
+main_path = "main_final.py"
+
+try:
+    # 用 utf-8-sig 读取，自动吞掉 BOM
+    with open(main_path, "r", encoding="utf-8-sig") as f:
+        content = f.read()
+    
+    # 顺手把之前报错的 contain 修复掉
+    content = content.replace('fit="contain"', 'fit=ft.ImageFit.CONTAIN')
+    
+    # 强制用最干净的标准 utf-8 写入
+    with open(main_path, "w", encoding="utf-8") as f:
+        f.write(content)
+        
+    print("✅ BOM 幽灵已物理超度！代码已完美修复！")
+except Exception as e:
+    print(f"❌ 修复失败: {e}")

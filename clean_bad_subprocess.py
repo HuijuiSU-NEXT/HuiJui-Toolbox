@@ -1,0 +1,28 @@
+# clean_bad_subprocess.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+pages_dir = os.path.join(BASE_DIR, "pages")
+
+print("🧹 正在清理被强行塞入的 creationflags 参数...")
+
+for filename in os.listdir(pages_dir):
+  if filename.endswith(".py"):
+    filepath = os.path.join(pages_dir, filename)
+    with open(filepath, "r", encoding="utf-8") as f:
+      content = f.read()
+
+    # 1. 把位于括号最前面的 creationflags 删掉
+    # 匹配: subprocess.Popen(\n  creationflags=..., 或者 subprocess.run(\n  creationflags=...,
+    content = re.sub(r'subprocess\.Popen\(\s*creationflags=subprocess\.CREATE_NO_WINDOW if os\.name == \'nt\' else 0,\s*', 'subprocess.Popen(', content)
+    content = re.sub(r'subprocess\.run\(\s*creationflags=subprocess\.CREATE_NO_WINDOW if os\.name == \'nt\' else 0,\s*', 'subprocess.run(', content)
+    
+    # 2. 把单行里强行塞入的也删掉
+    content = content.replace("creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0, ", "")
+
+    with open(filepath, "w", encoding="utf-8") as f:
+      f.write(content)
+    print(f"✅ {filename} 语法已恢复干净！")
+
+print("\n🚀 清理完毕！请运行 python main_final.py 验证是否能正常启动。")

@@ -1,0 +1,89 @@
+# fix_pure_video.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+with open(main_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 1. 干掉页面初始化里所有的 Base64 首帧逻辑，只保留纯血 bg_video 和 bg_image
+old_init = '''  # 🚨 初始化时，直接读取极小 Base64 封面
+  cover_b64 = CFG.get("small_cover_b64", "")
+  bg_image = ft.Image(
+    src_base64=cover_b64 if cover_b64 else None, 
+    fit=ft.ImageFit.COVER, 
+    expand=True, 
+    visible=bool(cover_b64)
+  )
+  ui_container = ft.Container(expand=True, bgcolor=ft.Colors.TRANSPARENT)
+  
+  main_stack = ft.Stack([bg_image, ui_container], expand=True, fit=ft.StackFit.EXPAND)
+  page.add(main_stack)
+  
+  video_state = {"current": None}'''
+
+new_init = '''  # 纯血版本，不要任何花里胡哨的首帧
+  bg_video = ftv.Video(expand=True, autoplay=True, playlist_mode=ftv.PlaylistMode.SINGLE, muted=True, visible=False, fit=ft.ImageFit.COVER)
+  bg_image = ft.Image(fit=ft.ImageFit.COVER, expand=True, visible=False)
+  
+  ui_container = ft.Container(expand=True, bgcolor=ft.Colors.TRANSPARENT)
+  main_stack = ft.Stack([bg_image, bg_video, ui_container], expand=True, fit=ft.StackFit.EXPAND)
+  page.add(main_stack)'''
+
+if old_init in content:
+  content = content.replace(old_init, new_init)
+  print("✅ 已拔除 Base64 首帧逻辑，恢复纯血 Video 引擎！")
+else:
+  # 兼容旧版本可能被改乱的情况，直接强行暴力清理
+  content = re.sub(r'  # 🚨 初始化时，直接读取极小 Base64 封面.*?page\.add\(main_stack\)', new_init, content, flags=re.DOTALL)
+  print("✅ 已通过正则强行替换底层架构！")
+
+# 2. 重写 update_wallpaper_hot，只判断是视频还是图片，不再搞遮罩和首帧
+pattern = r'  def update_wallpaper_hot\(\):.*?(?=  def |  # |\Z)'
+new_update = '''  def update_wallpaper_hot():
+    import glob
+    
+    all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+    video_files = [f for f in all_files if f.lower().endswith((".mp4", ".webm", ".mov", ".mkv", ".avi"))]
+    
+    if video_files:
+      # 如果有视频，直接播放视频
+      latest = max(video_files, key=os.path.getctime)
+      src = os.path.basename(latest)
+      abs_src = os.path.join(BASE_DIR, "assets", src)
+      
+      bg_image.visible = False
+      bg_video.visible = True
+      bg_video.playlist.clear()
+      bg_video.playlist.append(ftv.VideoMedia(abs_src))
+      bg_video.play()
+      print(f"🎬 直接加载纯血动态视频壁纸: {abs_src}")
+      
+    elif all_files:
+      # 如果没有视频但有大图，加载静态图
+      latest = max(all_files, key=os.path.getctime)
+      src = os.path.basename(latest)
+      
+      bg_video.visible = False
+      bg_video.pause()
+      bg_image.src = src
+      bg_image.visible = True
+      print(f"🖼️ 已加载静态图片壁纸: {src}")
+      
+    else:
+      bg_video.visible = False
+      bg_video.pause()
+      bg_image.visible = False
+      print("🧹 未找到壁纸文件")
+      
+    page.update()
+
+'''
+content = re.sub(pattern, new_update, content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("🚀 修复完毕！请重新运行 python main_final.py。")

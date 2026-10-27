@@ -1,0 +1,17 @@
+﻿import re
+
+file_path = "main_final.py"
+with open(file_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 强制删除 update_wallpaper_hot 里的 default_gif 加载逻辑
+# 匹配从 else: 到 print("🖼️ 准备加载内置默认动态壁纸") 的这几行
+pattern = re.compile(r'else:\s*default_gif = os\.path\.join\(BASE_DIR, "assets", "default_wallpaper\.gif"\)\s*if os\.path\.exists\(default_gif\) and CFG\.get\("use_default_wallpaper", True\):\s*target_file = default_gif\s*print\("🖼️ 准备加载内置默认动态壁纸"\)', re.DOTALL)
+
+# 替换为空（直接不加载默认图）
+content = pattern.sub('', content)
+
+with open(file_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("✅ main_final.py 代码已切除默认图加载逻辑！")

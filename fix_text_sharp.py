@@ -1,0 +1,48 @@
+# fix_text_sharp.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dashboard_path = os.path.join(BASE_DIR, "pages", "dashboard.py")
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+def process_file(filepath):
+  if not os.path.exists(filepath): return
+  with open(filepath, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 匹配所有以 "Matrix Engine" 开头的文本，增强它的颜色、字重和阴影
+  # 使用 BoxShadow 提升文字在复杂壁纸上的对比度
+  pattern = r'ft\.Text\("Matrix Engine.*?", size=[^,]+,\s*color=ft\.Colors\.GREY_400\)'
+  
+  new_text = '''ft.Text(
+        "Matrix Engine · 原生 GPU 渲染", 
+        size=13, 
+        color=ft.Colors.WHITE, 
+        weight=ft.FontWeight.W_600, 
+        font_family="MiSans",
+        shadow=ft.BoxShadow(
+          blur_radius=4, 
+          color=ft.Colors.with_opacity(0.8, "#000000"), 
+          offset=ft.Offset(1, 1)
+        )
+      )'''
+
+  if re.search(pattern, content):
+    content = re.sub(pattern, new_text, content, flags=re.DOTALL)
+    print(f"✅ 已成功提升 {os.path.basename(filepath)} 中的副标题清晰度！")
+  else:
+    # 兜底匹配
+    if "Matrix Engine" in content and "原生 GPU 渲染" in content:
+      content = content.replace('ft.Text("Matrix Engine · 原生 GPU 渲染", color=ft.Colors.GREY_400)', new_text)
+      print(f"✅ 已通过兜底替换提升 {os.path.basename(filepath)} 清晰度！")
+
+  # 顺便确保所有大标题也强制使用 MiSans 且去锯齿
+  content = content.replace('font_family="Microsoft YaHei"', 'font_family="MiSans"')
+
+  with open(filepath, "w", encoding="utf-8") as f:
+    f.write(content)
+
+# 处理这两个文件，主界面大标题都在这
+process_file(dashboard_path)
+process_file(main_path)

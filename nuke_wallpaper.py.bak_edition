@@ -1,0 +1,66 @@
+﻿import re
+import os
+
+# ==========================================
+# 第一刀：修正 ui_pages.py 的 reset_bg
+# ==========================================
+ui_path = "ui_pages.py"
+if os.path.exists(ui_path):
+    with open(ui_path, "r", encoding="utf-8") as f:
+        u_content = f.read()
+    
+    # 暴力匹配 reset_bg
+    pattern = re.compile(r'def reset_bg\(_\):.*?page\.update\(\)', re.DOTALL)
+    new_func = '''def reset_bg(_):
+        CFG.set("bg_image", "")
+        CFG.set("use_default_wallpaper", False) # 🚨 彻底封杀默认壁纸
+        
+        if hasattr(page, 'update_wallpaper_hot'):
+            page.update_wallpaper_hot()
+            
+        page.decoration = None
+        page.update()
+        page.snack_bar = ft.SnackBar(ft.Text("✅ 壁纸已彻底物理清除！"), bgcolor=ft.Colors.GREEN_600)
+        page.snack_bar.open = True
+        page.update()'''
+    
+    if pattern.search(u_content):
+        u_content = pattern.sub(new_func, u_content)
+        with open(ui_path, "w", encoding="utf-8") as f:
+            f.write(u_content)
+        print("✅ ui_pages.py: 清除按钮已强制切断默认GIF开关！")
+
+# ==========================================
+# 第二刀：修正 main_final.py 里的 update_wallpaper_hot
+# ==========================================
+main_path = "main_final.py"
+if os.path.exists(main_path):
+    with open(main_path, "r", encoding="utf-8") as f:
+        m_content = f.read()
+
+    # 匹配那段找不到壁纸时的 else 分支
+    old_else = '''        else:
+            bg_image.visible = False
+            bg_image.src_base64 = None
+            print("🧹 未找到壁纸文件，清空背景")
+        
+        bg_image.update()'''
+
+    new_else = '''        else:
+            # 🚨 物理超度：彻底清空源，防止底端缓存残留
+            bg_image.visible = False
+            bg_image.src_base64 = None
+            bg_image.src = None
+            print("🧹 壁纸已物理清除！")
+        
+        bg_image.update()
+        page.update() # 🚨 强制强制重绘整个页面！'''
+
+    if old_else in m_content:
+        m_content = m_content.replace(old_else, new_else)
+        with open(main_path, "w", encoding="utf-8") as f:
+            f.write(m_content)
+        print("✅ main_final.py: 壁纸组件物理清空与强制重绘逻辑已注入！")
+    else:
+        print("⚠️ main_final.py 里的 else 分支匹配失败，可能代码格式有微调。")
+

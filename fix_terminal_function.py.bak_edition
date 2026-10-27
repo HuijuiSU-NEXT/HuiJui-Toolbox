@@ -1,0 +1,105 @@
+# fix_terminal_function.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+terminal_path = os.path.join(BASE_DIR, "pages", "terminal.py")
+
+terminal_code = '''import flet as ft
+import threading
+import subprocess
+import os
+
+def build_terminal_page(page: ft.Page, theme_color):
+    # 日志输出区 (带玻璃边框的深色透底)
+    terminal_output = ft.TextField(
+        multiline=True, 
+        read_only=True, 
+        expand=True, 
+        bgcolor=ft.Colors.TRANSPARENT, 
+        color="#00FFD1",
+        border=ft.InputBorder.NONE,
+        text_size=14,
+        value="HuiJui Core Terminal v1.0\\n等待输入命令...\\n",
+        text_style=ft.TextStyle(font_family="Consolas")
+    )
+    
+    log_container = ft.Container(
+        content=terminal_output, 
+        bgcolor=page.ui_style.get("log_bg", ft.Colors.with_opacity(0.2, "#000000")), 
+        border_radius=12, padding=15, expand=True, 
+        border=page.ui_style.get("card_border", ft.border.all(1, theme_color))
+    )
+
+    # 🚨 终极玻璃化输入框
+    cmd_input = ft.TextField(
+        hint_text="输入命令 (如 adb devices) 并回车执行...", 
+        bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), # 高透白玻璃底
+        border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), # 亮白边框
+        focused_border_color=theme_color, # 聚焦时变成主题青色
+        border_radius=10,
+        color="white",
+        text_size=14,
+        content_padding=ft.padding.all(15),
+        text_style=ft.TextStyle(font_family="Consolas")
+    )
+
+    def append_log(text):
+        terminal_output.value += text
+        page.update()
+
+    def run_cmd(e):
+        cmd = cmd_input.value.strip()
+        if not cmd:
+            return
+        
+        cmd_input.value = ""
+        append_log(f"\\n> {cmd}\\n")
+        page.update()
+        
+        # 🚨 铁律 1：开新线程跑底层命令
+        threading.Thread(target=_exec_cmd_thread, args=(cmd,), daemon=True).start()
+
+    def _exec_cmd_thread(cmd):
+        try:
+            process = subprocess.Popen(
+                cmd, 
+                shell=True, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',
+                errors='replace',
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            )
+            
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    append_log(line)
+            
+            process.stdout.close()
+            process.wait()
+            append_log(f"\\n[进程结束, 退出码: {process.returncode}]\\n")
+        except Exception as ex:
+            append_log(f"\\n[执行出错]: {str(ex)}\\n")
+
+    cmd_input.on_submit = run_cmd
+
+    return ft.Container(
+        content=ft.Column([
+            ft.Row([
+                ft.Icon(ft.Icons.TERMINAL, color=theme_color, size=28), 
+                ft.Text("高级终端 · 实时 Shell", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="MiSans")
+            ]),
+            ft.Container(height=10),
+            log_container,
+            ft.Container(height=10),
+            cmd_input
+        ], expand=True, spacing=10),
+        expand=True, padding=20
+    )
+'''
+
+with open(terminal_path, "w", encoding="utf-8") as f:
+    f.write(terminal_code)
+
+print("✅ pages/terminal.py 已修正为函数式，玻璃输入框已注入！")

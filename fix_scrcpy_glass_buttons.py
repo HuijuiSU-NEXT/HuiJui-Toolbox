@@ -1,0 +1,57 @@
+# fix_scrcpy_glass_buttons.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+scrcpy_path = os.path.join(BASE_DIR, "pages", "scrcpy.py")
+
+if os.path.exists(scrcpy_path):
+  with open(scrcpy_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 1. 重写 启动 Scrcpy 投屏 按钮
+  # 找到现有的 btn_start 定义并替换
+  old_btn_start = r'btn_start = ft\.ElevatedButton\([^)]*\)'
+  new_btn_start = '''btn_start = ft.ElevatedButton(
+    "启动 Scrcpy 投屏", 
+    icon=ft.Icons.PLAY_ARROW, 
+    on_click=start_scrcpy, 
+    style=ft.ButtonStyle(
+      color=theme_color, 
+      bgcolor=ft.Colors.with_opacity(0.2, theme_color), 
+      side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), 
+      shape=ft.RoundedRectangleBorder(radius=10), 
+      padding=ft.padding.symmetric(horizontal=20, vertical=12), 
+      elevation=0
+    )
+  )'''
+  content = re.sub(old_btn_start, new_btn_start, content, flags=re.DOTALL)
+
+  # 2. 重写 强制关闭投屏 按钮
+  old_btn_kill = r'btn_kill = ft\.ElevatedButton\([^)]*\)'
+  new_btn_kill = '''btn_kill = ft.ElevatedButton(
+    "强制关闭投屏", 
+    icon=ft.Icons.CLOSE, 
+    on_click=kill_scrcpy, 
+    style=ft.ButtonStyle(
+      color=ft.Colors.WHITE, 
+      bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.RED_400), 
+      side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, ft.Colors.RED_400)), 
+      shape=ft.RoundedRectangleBorder(radius=10), 
+      padding=ft.padding.symmetric(horizontal=20, vertical=12), 
+      elevation=0
+    )
+  )'''
+  content = re.sub(old_btn_kill, new_btn_kill, content, flags=re.DOTALL)
+
+  # 3. 顺手把图标导航按钮的底色也微调一下（让它们更通透）
+  content = content.replace(
+    'bgcolor=ft.Colors.with_opacity(0.2, theme_color)',
+    'bgcolor=ft.Colors.with_opacity(0.15, theme_color)'
+  )
+
+  with open(scrcpy_path, "w", encoding="utf-8") as f:
+    f.write(content)
+  print("✅ Scrcpy 投屏页面的启动/关闭按钮已彻底玻璃化！")
+else:
+  print("❌ 找不到 pages/scrcpy.py")

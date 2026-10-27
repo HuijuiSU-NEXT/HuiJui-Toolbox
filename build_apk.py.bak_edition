@@ -1,0 +1,111 @@
+# build_apk.py - 一键生成 Android 重构版并打包
+import os
+import sys
+import subprocess
+import platform
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(BASE_DIR)  # 强制切到根目录，解决路径报错
+
+APK_MAIN = os.path.join(BASE_DIR, "main_apk.py")
+
+# 重写后的 Android 专用入口（直接剔除 Windows exe 调用，防止跨平台报错）
+APK_CODE = '''# main_apk.py - Android 原生重构版
+import flet as ft
+import platform
+
+def main(page: ft.Page):
+    page.title = "HuiJui Toolbox"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.bgcolor = "#090A0F"
+    page.padding = 20
+    
+    theme_color = "#39C5BB"
+    log_area = ft.TextField(
+        multiline=True, read_only=True, expand=True,
+        bgcolor=ft.Colors.with_opacity(0.1, "#FFFFFF"), color="#00FFD1",
+        text_size=13, text_style=ft.TextStyle(font_family="Consolas"),
+        border=ft.InputBorder.NONE, border_radius=12,
+    )
+
+    def test_click(e):
+        log_area.value += f"> {e.control.data} 被点击！\\n"
+        log_area.value += "> 注意：当前为 Android 端，底层 .exe 刷机指令已重构隔离。\\n"
+        page.update()
+
+    def make_card(title, icon, desc, disabled=False):
+        return ft.Container(
+            content=ft.Row([
+                ft.Icon(icon, color=theme_color if not disabled else "#555555", size=28),
+                ft.Column([
+                    ft.Text(title, weight=ft.FontWeight.BOLD, color="white" if not disabled else "#888888", size=16),
+                    ft.Text(desc, color="#A0ABC0" if not disabled else "#555555", size=12),
+                ], spacing=2, expand=True)
+            ]),
+            padding=20, border_radius=16,
+            bgcolor=ft.Colors.with_opacity(0.2, "#0D1017"),
+            border=ft.border.all(1, ft.Colors.with_opacity(0.3, theme_color if not disabled else "#333333")),
+            on_click=None if disabled else test_click, data=title,
+        )
+
+    page.add(
+        ft.Column([
+            ft.Row([
+                ft.Icon(ft.Icons.PHONE_ANDROID, color=theme_color, size=36),
+                ft.Column([
+                    ft.Text("HuiJui Toolbox", size=24, weight=ft.FontWeight.W_900, color="white"),
+                    ft.Text("Android Edition · APK 测试版", color=theme_color, size=12),
+                ], spacing=0)
+            ]),
+            ft.Container(height=20),
+            make_card("模块仓库", ft.Icons.EXTENSION, "浏览 797 个纯净模块"),
+            ft.Container(height=10),
+            make_card("急救中心", ft.Icons.HEALING, "驱动与端口状态监控"),
+            ft.Container(height=10),
+            make_card("一键刷机", ft.Icons.ELECTRIC_BOLT, "需连接 PC 辅助执行 (已禁用)", disabled=True),
+            ft.Container(height=10),
+            make_card("临时 Root", ft.Icons.SECURITY, "需连接 PC 辅助执行 (已禁用)", disabled=True),
+            ft.Container(height=20),
+            ft.Text("运行日志", size=14, color="white", weight=ft.FontWeight.BOLD),
+            ft.Container(
+                content=log_area, expand=True,
+                bgcolor=ft.Colors.with_opacity(0.2, "#000000"),
+                border_radius=12, padding=15,
+                border=ft.border.all(1, ft.Colors.with_opacity(0.2, theme_color)),
+            )
+        ], expand=True, scroll=ft.ScrollMode.ADAPTIVE)
+    )
+
+if __name__ == "__main__":
+    ft.app(target=main)
+'''
+
+def main():
+    print(f"[*] 正在切换到项目根目录: {BASE_DIR}")
+    
+    # 1. 自动生成重构后的 Android 入口文件
+    with open(APK_MAIN, "w", encoding="utf-8") as f:
+        f.write(APK_CODE)
+    print("[OK] 已生成重构版 main_apk.py（已隔离 Windows exe 调用）")
+
+    # 2. 动态检测 flutter 是否可用，如果没有则自动安装
+    print("[*] 开始打包 APK，首次打包会自动下载 Flutter SDK 和 Gradle 依赖...")
+    
+    # 使用 flet build 并带上 --yes 自动确认
+    cmd = [
+        "flet", "build", "apk", "main_apk.py",
+        "--project", "HuiJui_Toolbox",
+        "--org", "com.huijui.toolbox",
+        "--product", "HuiJui Toolbox",
+        "--yes" # 自动确认下载依赖
+    ]
+    
+    try:
+        subprocess.run(cmd, check=True, cwd=BASE_DIR)
+        print("\n[✅] 打包成功！请在 build/apk/ 目录下查找 app-release.apk")
+    except subprocess.CalledProcessError as e:
+        print(f"\n[❌] 打包失败: {e}")
+        print("💡 如果是 Flutter / Gradle 网络问题，请配置国内镜像。")
+
+if __name__ == "__main__":
+    main()

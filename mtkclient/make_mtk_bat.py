@@ -20,6 +20,6 @@ pause
 # 写入文件
 bat_path = os.path.join(BIN_MTK_DIR, "mtk_gui.bat")
 with open(bat_path, "w", encoding="utf-8") as f:
-    f.write(bat_content)
+  f.write(bat_content)
 
 print(f"✅ 一键启动脚本已成功生成！路径: {bat_path}")

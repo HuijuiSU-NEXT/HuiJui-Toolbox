@@ -1,15 +1,21 @@
-﻿# core/adb_core.py
-import os, sys, re, json, time, threading, subprocess, shutil, hashlib, ctypes
+import re
+import json
+import time
+import subprocess
+import threading
+import ctypes
 from collections import deque
-from datetime import datetime
+import os
+import sys
 
-def get_base_dir():
-    if getattr(sys, "frozen", False): return sys._MEIPASS
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if 'HUIJUI_SAFE_DIR' in os.environ:
+    BASE_DIR = os.environ['HUIJUI_SAFE_DIR']
+elif getattr(sys, 'frozen', False) or "__compiled__" in globals():
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BASE_DIR = get_base_dir()
 BIN_DIR = os.path.join(BASE_DIR, "bin")
-
 ADB = os.path.join(BIN_DIR, "adb.exe")
 FASTBOOT = os.path.join(BIN_DIR, "fastboot.exe")
 DUMPER = os.path.join(BIN_DIR, "payload-dumper-go.exe")
@@ -20,7 +26,7 @@ DEFAULT_CONFIG = {
     "theme": "dark", "skip_wipe": False, "disable_verity": True, "auto_backup": True,
     "auto_root_patch": True, "dangerous_extra": [], "confirm_dangerous": True,
     "min_battery": 30, "max_temp": 45, "check_firmware_match": True, "check_multi_device": True,
-    "theme_color": "#39C5BB", "onboarded": False,     "bg_image": "",
+    "theme_color": "#39C5BB", "onboarded": False, "bg_image": "",
     "bg_opacity": 0.3
 }
 
@@ -74,7 +80,7 @@ class CommandRunner:
         try:
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     cwd=cwd, text=True, encoding="utf-8", errors="ignore", bufsize=1, creationflags=flags)
-        except Exception as e: return -1, [f"鍚姩澶辫触: {e}"]
+        except Exception as e: return -1, [f"启动失败: {e}"]
         def _reader():
             try:
                 for line in proc.stdout:
@@ -90,11 +96,11 @@ class CommandRunner:
         try:
             while True:
                 if self.stop_flag:
-                    self._kill_tree(proc); return -2, ["鐢ㄦ埛涓"]
+                    self._kill_tree(proc); return -2, ["用户中止"]
                 ret = proc.poll()
                 if ret is not None: break
                 if time.time() - start > timeout:
-                    self._kill_tree(proc); return -1, ["鍛戒护瓒呮椂"]
+                    self._kill_tree(proc); return -1, ["命令超时"]
                 if on_tick and time.time() - start > next_tick:
                     try: on_tick(int(time.time() - start))
                     except Exception: pass
@@ -102,7 +108,7 @@ class CommandRunner:
                 time.sleep(0.15)
             return proc.returncode, self._extract_errors()
         except Exception as e:
-            self._kill_tree(proc); return -1, [f"寮傚父: {e}"]
+            self._kill_tree(proc); return -1, [f"异常: {e}"]
     def _kill_tree(self, proc):
         try:
             if os.name == "nt": subprocess.run(f"taskkill /F /T /PID {proc.pid}", shell=True, capture_output=True, creationflags=NO_WINDOW)
@@ -181,4 +187,3 @@ def list_fastboot_devices():
 def fastboot_flash(part, img_path, timeout=180): return run_cmd([FASTBOOT, "flash", part, img_path], timeout=timeout)
 def fastboot_reboot(target="system"): return run_cmd([FASTBOOT, "reboot", target])
 def is_fastbootd(): return "yes" in run_cmd([FASTBOOT, "getvar", "is-userspace"])[0].lower()
-

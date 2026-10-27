@@ -1,0 +1,49 @@
+# fix_flash_button.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+flash_path = os.path.join(BASE_DIR, "pages", "flash.py")
+
+if os.path.exists(flash_path):
+    with open(flash_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 1. 修复“开始刷机”按钮的样式
+    # 匹配旧的实心按钮
+    old_btn = r'btn_start = ft\.ElevatedButton\([^)]*\)'
+    
+    # 新的高透发光玻璃按钮
+    new_btn = '''btn_start = ft.ElevatedButton(
+        "开始刷机", 
+        icon=ft.Icons.FLASH_ON, 
+        disabled=True,
+        style=ft.ButtonStyle(
+            color=theme_color, 
+            bgcolor=ft.Colors.with_opacity(0.2, theme_color), 
+            side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), 
+            shape=ft.RoundedRectangleBorder(radius=10), 
+            padding=ft.padding.symmetric(horizontal=40, vertical=18), 
+            elevation=0
+        )
+    )'''
+    
+    content = re.sub(old_btn, new_btn, content, flags=re.DOTALL)
+
+    # 2. 防止有些地方写死了黑色/深色底，强行换成玻璃底
+    # 修复刷机日志框的底色
+    content = content.replace(
+        'bgcolor="#05070A"', 
+        'bgcolor=page.ui_style.get("log_bg", ft.Colors.with_opacity(0.2, "#000000")), border=page.ui_style.get("card_border", ft.border.all(1, theme_color))'
+    )
+    content = content.replace(
+        'bgcolor=ft.Colors.BLACK', 
+        'bgcolor=page.ui_style.get("log_bg", ft.Colors.with_opacity(0.2, "#000000"))'
+    )
+
+    with open(flash_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    
+    print("✅ pages/flash.py 的刷机按钮已彻底玻璃化！")
+else:
+    print("❌ 找不到 pages/flash.py")

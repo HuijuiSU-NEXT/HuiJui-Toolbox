@@ -1,0 +1,78 @@
+# fix_misans_font_ps.py
+import os
+import urllib.request
+import zipfile
+import shutil
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FONTS_DIR = os.path.join(BASE_DIR, "assets", "fonts")
+MAIN_PATH = os.path.join(BASE_DIR, "main_final.py")
+
+os.makedirs(FONTS_DIR, exist_ok=True)
+
+# 小米官方字体下载直链
+MI_SANS_URL = "https://cdn.cnbj1.fds.api.mi-img.com/vipmlmodel/font/MiSans/MiSans.zip"
+
+def download_and_extract():
+  print("⏳ 正在从小米官方服务器下载 MiSans 字体包...")
+  zip_path = os.path.join(BASE_DIR, "MiSans.zip")
+  try:
+    req = urllib.request.Request(MI_SANS_URL, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=30) as response, open(zip_path, 'wb') as out_file:
+      shutil.copyfileobj(response, out_file)
+    print("✅ 下载完成！正在解压提取...")
+    
+    with zipfile.ZipFile(zip_path, 'r') as z:
+      for file_info in z.infolist():
+        filename = os.path.basename(file_info.filename)
+        # 提取常规体和粗体
+        if filename in ["MiSans-Regular.ttf", "MiSans-Bold.ttf"]:
+          target_path = os.path.join(FONTS_DIR, filename)
+          with z.open(file_info) as source, open(target_path, "wb") as target:
+            shutil.copyfileobj(source, target)
+          print(f"📦 已成功提取: {filename}")
+    
+    if os.path.exists(zip_path):
+      os.remove(zip_path)
+    return True
+  except Exception as e:
+    print(f"❌ 下载或解压失败: {e}")
+    return False
+
+def inject_font_config():
+  print("⏳ 正在修改 main_final.py 注入字体配置...")
+  if not os.path.exists(MAIN_PATH):
+    print("❌ 找不到 main_final.py！")
+    return
+
+  with open(MAIN_PATH, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 清理可能残留的旧配置
+  content = re.sub(r'\n\s*# 🚨 全局字体配置：使用 MiSans.*?page\.theme = ft\.Theme\(font_family="MiSans"\)\n', '', content, flags=re.DOTALL)
+
+  # 构造新的字体注入代码
+  font_config = '''
+  # 🚨 全局字体配置：使用 MiSans 提升清晰度
+  page.fonts = {
+    "MiSans": "fonts/MiSans-Regular.ttf",
+    "MiSans Bold": "fonts/MiSans-Bold.ttf"
+  }
+  page.theme = ft.Theme(font_family="MiSans")
+'''
+
+  # 精准注入到 `def main(page: ft.Page):` 之后
+  if "def main(page: ft.Page):" in content:
+    # 确保在页面初始化后立即注入
+    content = content.replace("def main(page: ft.Page):\n", "def main(page: ft.Page):\n" + font_config, 1)
+    with open(MAIN_PATH, "w", encoding="utf-8") as f:
+      f.write(content)
+    print("✅ 字体配置已成功注入 main_final.py！")
+  else:
+    print("❌ 未找到 `def main(page: ft.Page):`，请检查主文件结构。")
+
+if __name__ == "__main__":
+  if download_and_extract():
+    inject_font_config()
+    print("\n🎉 全部搞定！请运行 `python main_final.py` 查看字体效果。")

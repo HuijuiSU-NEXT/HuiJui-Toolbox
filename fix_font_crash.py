@@ -1,0 +1,47 @@
+# fix_font_crash.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+def clean_font_syntax(filepath):
+  if not os.path.exists(filepath): return
+  with open(filepath, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 1. 物理超度刚才错误的全局替换：
+  # 把 ft.Text(font_family="MiSans", xxx) 改回 ft.Text(xxx)
+  # 这样它会自动继承全局的 MiSans 主题
+  content = re.sub(r'ft\.Text\(font_family="MiSans",\s*', 'ft.Text(', content)
+  
+  # 修复可能因为多行拼接导致的奇怪写法
+  content = re.sub(r'ft\.Text\(\s*font_family="MiSans",\s*', 'ft.Text(', content)
+
+  with open(filepath, "w", encoding="utf-8") as f:
+    f.write(content)
+  print(f"✅ 已清理 {os.path.basename(filepath)} 中的违规字体参数，彻底消除语法错误！")
+
+# 1. 清理语法错误
+clean_font_syntax(settings_path)
+clean_font_syntax(main_path)
+
+# 2. 重新对 settings.py 进行纯正的 UI 优化（不动语法，只改样式）
+with open(settings_path, "r", encoding="utf-8") as f:
+  s_content = f.read()
+
+# 保留上一波针对输入框和下拉框的玻璃质感优化
+old_color = 'bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.2, theme_color))'
+new_color = 'bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.4, theme_color), border_radius=8)'
+s_content = s_content.replace(old_color, new_color)
+
+old_dropdown = 'bgcolor="#1A233A", color="white", options=['
+new_dropdown = 'bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.4, theme_color), border_radius=8, options=['
+s_content = s_content.replace(old_dropdown, new_dropdown)
+
+with open(settings_path, "w", encoding="utf-8") as f:
+  f.write(s_content)
+print("✅ 已保留并重新应用输入框/下拉框的玻璃质感优化！")
+
+print("🚀 修复完毕！请重新运行 python main_final.py。")

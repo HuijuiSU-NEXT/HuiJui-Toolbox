@@ -1,0 +1,31 @@
+# force_bin_bom.py
+main_path = "main_final.py"
+
+print("⏳ 正在通过二进制模式，物理超度文件中的所有 BOM 字节...")
+
+try:
+    # 1. 以二进制读取原始字节
+    with open(main_path, "rb") as f:
+        raw_data = f.read()
+    
+    # 2. 暴力替换所有的 UTF-8 BOM 字节（EF BB BF）
+    cleaned_data = raw_data.replace(b'\xef\xbb\xbf', b'')
+    
+    # 3. 顺便清理可能存在的空字节 \x00
+    cleaned_data = cleaned_data.replace(b'\x00', b'')
+    
+    # 4. 以二进制重新写入
+    with open(main_path, "wb") as f:
+        f.write(cleaned_data)
+        
+    print("✅ 二进制级别的清洗完成！")
+    
+    # 5. 解码并打印前 5 行，让你看看文件到底长啥样
+    print("\n=== 文件前 5 行内容 ===")
+    lines = cleaned_data.decode('utf-8', errors='replace').split('\n')
+    for i, line in enumerate(lines[:5]):
+        print(f"第 {i+1} 行: {repr(line)}")
+    print("======================\n")
+    
+except Exception as e:
+    print(f"❌ 清洗失败: {e}")

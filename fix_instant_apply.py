@@ -1,0 +1,39 @@
+# fix_instant_apply.py
+import os
+
+settings_path = "pages/settings.py"
+
+with open(settings_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 找到那段触发双重刷新的代码，删掉 refresh_main_ui
+old_apply = '''          # 刷新主界面
+          if hasattr(page, "update_wallpaper_hot"):
+            page.update_wallpaper_hot()
+          if hasattr(page, "refresh_main_ui"):
+            page.refresh_main_ui(tab_index=4)
+            
+          show_snackbar("高清壁纸已应用并智能适配！")'''
+
+new_apply = '''          # 刷新主界面
+          if hasattr(page, "update_wallpaper_hot"):
+            page.update_wallpaper_hot()
+          # 移除 refresh_main_ui，防止打断后台视频加载
+          # if hasattr(page, "refresh_main_ui"):
+          #   page.refresh_main_ui(tab_index=4)
+            
+          show_snackbar("高清壁纸已应用！")'''
+
+if old_apply in content:
+  content = content.replace(old_apply, new_apply)
+  print("✅ 已成功移除多余的界面重建代码！")
+else:
+  print("⚠️ 未找到完全匹配的代码，尝试正则替换...")
+  import re
+  pattern = r'          # 刷新主界面\s*if hasattr\(page, "update_wallpaper_hot"\):\s*page\.update_wallpaper_hot\(\)\s*if hasattr\(page, "refresh_main_ui"\):\s*page\.refresh_main_ui\(tab_index=4\)\s*show_snackbar\("高清壁纸已应用并智能适配！"\)'
+  if re.search(pattern, content):
+    content = re.sub(pattern, new_apply, content)
+    print("✅ 已通过正则成功兜底替换！")
+
+with open(settings_path, "w", encoding="utf-8") as f:
+  f.write(content)

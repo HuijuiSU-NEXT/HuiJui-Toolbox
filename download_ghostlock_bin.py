@@ -1,0 +1,48 @@
+# download_ghostlock_bin.py
+import os
+import urllib.request
+import shutil
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+os.makedirs(BIN_DIR, exist_ok=True)
+
+# 官方 Release 里的 ghostlock 二进制下载链接
+TARGET_URL = "https://github.com/Viole403/ghostlock-a53/releases/download/pre-release/ghostlock"
+
+MIRRORS = [
+  TARGET_URL,
+  f"https://ghproxy.net/{TARGET_URL}",
+  f"https://gh.llkk.cc/{TARGET_URL}",
+]
+
+def download():
+  dest_path = os.path.join(BIN_DIR, "ghostlock-bin")
+  if os.path.exists(dest_path):
+    print("✅ ghostlock-bin 已存在，跳过下载。")
+    return True
+
+  for i, url in enumerate(MIRRORS):
+    print(f"⏳ 正在尝试下载 (源 {i+1}/{len(MIRRORS)})...")
+    try:
+      req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+      with urllib.request.urlopen(req, timeout=30) as response, open(dest_path, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+      print(f"✅ 下载成功！已保存为: {dest_path}")
+      return True
+    except Exception as e:
+      print(f"⚠️ 源 {i+1} 失败: {e}")
+
+  print("\n❌ 自动下载失败，请手动操作：")
+  print(f"1. 访问: {TARGET_URL}")
+  print("2. 下载文件: ghostlock")
+  print("3. 重命名为 ghostlock-bin")
+  print(f"4. 放入目录: {BIN_DIR}")
+  return False
+
+if __name__ == "__main__":
+  success = download()
+  if success:
+    print("\n🎉 ghostlock-bin 载荷已就位！")
+  else:
+    print("\n🔧 请按照上方提示手动下载。")

@@ -1,0 +1,153 @@
+# diagnose_all.py
+import os
+import sys
+import re
+import subprocess
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+
+print("=" * 70)
+print("🚀 正在执行 HuiJui Toolbox 全功能自动化体检...")
+print("=" * 70)
+
+score = 0
+total_checks = 0
+errors = []
+
+def _buttonstyle_has_border(content):
+    """精确扫描：只在 ButtonStyle(...) 的括号配平范围内查 border=，杜绝跨块误伤"""
+    idx = 0
+    n = len(content)
+    while idx < n:
+        m = re.search(r"\bButtonStyle\s*\(", content[idx:])
+        if not m:
+            return False
+        start = idx + m.end()
+        depth = 1
+        i = start
+        while i < n and depth > 0:
+            ch = content[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            i += 1
+        block = content[start:i - 1] if i - 1 >= start else ""
+        if re.search(r"\bborder\s*=", block):
+            return True
+        idx = i
+    return False
+
+
+def check(name, condition, detail=""):
+    global score, total_checks
+    total_checks += 1
+    if condition:
+        score += 1
+        print(f"✅ [通过] {name} {detail}")
+    else:
+        print(f"❌ [失败] {name} {detail}")
+        errors.append(f"{name} - {detail}")
+
+# ================= 1. 核心驱动与依赖检查 =================
+print("\n📦 [1/5] 正在检查底层军火库 (bin 目录)...")
+required_exes = [
+    ("adb.exe", "ADB 调试工具"),
+    ("fastboot.exe", "Fastboot 刷机工具"),
+    ("scrcpy.exe", "Scrcpy 投屏"),
+    ("payload-dumper-go.exe", "Payload 解包工具"),
+    ("ffmpeg/ffmpeg.exe", "FFmpeg 视频引擎"),
+    ("ghostlock-extract.exe", "GhostLock 偏移提取"),
+    ("ghostlock-bin", "GhostLock 载荷")
+]
+for exe, desc in required_exes:
+    path = os.path.join(BIN_DIR, exe)
+    check(desc, os.path.exists(path), f"路径: {exe}")
+
+# ================= 2. 资源与字体检查 =================
+print("\n🎨 [2/5] 正在检查全局 UI 资源...")
+required_assets = [
+    ("logo.png", "全局 Logo"),
+    ("logo.ico", "窗口图标"),
+    ("fonts/MiSans-Regular.ttf", "MiSans 字体")
+]
+for asset, desc in required_assets:
+    path = os.path.join(ASSETS_DIR, asset)
+    check(desc, os.path.exists(path), f"路径: assets/{asset}")
+
+# ================= 3. 语法错误静态扫描 =================
+print("\n🔍 [3/5] 正在扫描代码潜在语法与 API 违规...")
+pages_dir = os.path.join(BASE_DIR, "pages")
+py_files = [os.path.join(BASE_DIR, "main_final.py")]
+if os.path.exists(pages_dir):
+    for f in os.listdir(pages_dir):
+        if f.endswith(".py"):
+            py_files.append(os.path.join(pages_dir, f))
+
+for py_file in py_files:
+    if not os.path.exists(py_file): continue
+    with open(py_file, "r", encoding="utf-8") as f:
+        content = f.read()
+        filename = os.path.basename(py_file)
+        
+        # 静态语法检查
+        try:
+            compile(content, py_file, 'exec')
+        except SyntaxError as e:
+            check(f"语法编译: {filename}", False, f"第 {e.lineno} 行: {e.msg}")
+            continue
+            
+        # API 违规检查
+        if "ft.Text" in content and "shadow=" in content:
+            check(f"API 规范: {filename}", False, "发现违规的 Text shadow 参数")
+        elif "ft.ButtonStyle" in content and _buttonstyle_has_border(content):
+            check(f"API 规范: {filename}", False, "发现违规的 ButtonStyle border 参数")
+        else:
+            check(f"代码规范: {filename}", True)
+
+# ================= 4. 线程阻塞与路径安全检查 =================
+print("\n🧵 [4/5] 正在检查线程阻塞与路径硬编码...")
+for py_file in py_files:
+    if not os.path.exists(py_file): continue
+    with open(py_file, "r", encoding="utf-8") as f:
+        content = f.read()
+        filename = os.path.basename(py_file)
+        
+        # 路径安全
+        if '"bin\\\\' in content or "'bin\\\\" in content or '"bin/' in content:
+            check(f"路径安全: {filename}", False, "发现硬编码相对路径，建议用 BIN_DIR 动态拼接")
+        else:
+            check(f"路径安全: {filename}", True)
+            
+        # 线程安全（只检测阻塞型 subprocess 调用；Popen 视为非阻塞）
+        _BLOCKING_PAT = re.compile(
+            r"subprocess\.(?:run|call|check_output|check_call)\s*\(|\.wait\s*\(|\.communicate\s*\("
+        )
+        if _BLOCKING_PAT.search(content):
+            if "threading" not in content and "async" not in content:
+                check(f"线程安全: {filename}", False, "存在阻塞型 subprocess 调用但没有 threading/async 包裹")
+            else:
+                check(f"线程安全: {filename}", True)
+
+# ================= 5. 导入与依赖完整性检查 =================
+print("\n🔗 [5/5] 正在检查系统依赖完整性...")
+try:
+    import flet as ft
+    import flet_video
+    from PIL import Image
+    check("核心依赖 (flet, flet_video, PIL)", True)
+except ImportError as e:
+    check("核心依赖", False, f"缺少模块: {str(e)}")
+
+# ================= 总结报告 =================
+print("\n" + "=" * 70)
+print(f"📊 体检报告: 通过 {score}/{total_checks} 项检查")
+if len(errors) == 0:
+    print("🎉 太完美了！所有功能链路均正常，可以直接打包！")
+else:
+    print("🔧 发现以下问题，请务必修复后再打包：")
+    for err in errors:
+        print(f"   - {err}")
+print("=" * 70)

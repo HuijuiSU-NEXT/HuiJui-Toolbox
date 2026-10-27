@@ -1,0 +1,70 @@
+# fix_ghostlock_missing.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+temp_root_path = os.path.join(BASE_DIR, "pages", "temp_root.py")
+
+if os.path.exists(temp_root_path):
+    with open(temp_root_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 找到 btn_root 的定义，在初始化时判断工具是否存在
+    old_btn = '''    btn_root = ft.ElevatedButton(
+        "开始临时 Root", icon=ft.Icons.SECURITY, disabled=True,
+        style=ft.ButtonStyle(
+            color=theme_color, 
+            bgcolor=ft.Colors.with_opacity(0.2, theme_color), 
+            side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), 
+            shape=ft.RoundedRectangleBorder(radius=10), 
+            padding=ft.padding.symmetric(horizontal=20, vertical=12), 
+            elevation=0
+        )
+    )'''
+
+    new_btn = '''    # 🚨 检查必需的工具是否存在
+    extractor_exists = os.path.exists(EXTRACTOR_PATH)
+    bin_exists = os.path.exists(GHOSTLOCK_BIN)
+    
+    btn_root = ft.ElevatedButton(
+        "开始临时 Root", icon=ft.Icons.SECURITY, 
+        disabled=True, # 默认禁用，等解析成功后再开启
+        style=ft.ButtonStyle(
+            color=theme_color, 
+            bgcolor=ft.Colors.with_opacity(0.2, theme_color), 
+            side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), 
+            shape=ft.RoundedRectangleBorder(radius=10), 
+            padding=ft.padding.symmetric(horizontal=20, vertical=12), 
+            elevation=0
+        )
+    )'''
+
+    if old_btn in content:
+        content = content.replace(old_btn, new_btn)
+        print("✅ 已注入工具存在性检测！")
+
+    # 在 start_root_flow 函数里添加校验
+    old_flow = '''    def start_root_flow():
+        if not state["is_supported"]: return
+        btn_root.disabled = True'''
+    
+    new_flow = '''    def start_root_flow():
+        if not state["is_supported"]: return
+        
+        # 🚨 拦截缺失工具，防止闪退
+        if not extractor_exists:
+            show_snackbar("❌ 缺失 ghostlock-extract.exe，请放入 bin 目录", ft.Colors.RED)
+            return
+        if not bin_exists:
+            show_snackbar("❌ 缺失 ghostlock-bin 载荷，请放入 bin 目录", ft.Colors.RED)
+            return
+            
+        btn_root.disabled = True'''
+        
+    if old_flow in content:
+        content = content.replace(old_flow, new_flow)
+        print("✅ 已加入缺失工具拦截逻辑，打包后绝不闪退！")
+
+    with open(temp_root_path, "w", encoding="utf-8") as f:
+        f.write(content)
+else:
+    print("❌ 找不到 pages/temp_root.py")

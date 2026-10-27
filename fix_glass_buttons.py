@@ -1,0 +1,57 @@
+# fix_glass_buttons.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+wireless_path = os.path.join(BASE_DIR, "pages", "wireless_adb.py")
+
+if os.path.exists(wireless_path):
+  with open(wireless_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 🚨 核心：将所有实心绿色按钮，改成半透明发光玻璃按钮
+  # 匹配那三个按钮的 style 定义
+  
+  # 1. 一键开启按钮
+  content = content.replace(
+    'style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=20, vertical=12), elevation=0)',
+    'style=ft.ButtonStyle(color=theme_color, bgcolor=ft.Colors.with_opacity(0.2, theme_color), side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=20, vertical=12), elevation=0)'
+  )
+
+  # 2. 配对按钮 和 连接按钮 (这俩之前的定义是一样的，需要分别替换)
+  # 配对按钮
+  content = content.replace(
+    'style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10), elevation=0)',
+    'style=ft.ButtonStyle(color=theme_color, bgcolor=ft.Colors.with_opacity(0.2, theme_color), side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10), elevation=0)'
+  )
+  
+  # 3. 断开连接按钮 (统一为更高级的透明黑玻璃)
+  content = content.replace(
+    'style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.with_opacity(0.1, "#000000"), side=ft.BorderSide(1, ft.Colors.with_opacity(0.3, "#FFFFFF")), shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10))',
+    'style=ft.ButtonStyle(color="white", bgcolor=ft.Colors.with_opacity(0.1, "#000000"), side=ft.BorderSide(1, ft.Colors.with_opacity(0.4, "#FFFFFF")), shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10), elevation=0)'
+  )
+
+  with open(wireless_path, "w", encoding="utf-8") as f:
+    f.write(content)
+  print("✅ 无线调试页面的按钮已彻底玻璃化！")
+
+# 顺便检查一下其他页面有没有类似突兀的实心按钮
+pages_dir = os.path.join(BASE_DIR, "pages")
+for filename in os.listdir(pages_dir):
+  if filename.endswith(".py") and not filename.startswith("__"):
+    filepath = os.path.join(pages_dir, filename)
+    with open(filepath, "r", encoding="utf-8") as f:
+      c = f.read()
+    
+    # 兜底替换：把其他页面可能残留的实心按钮也改成透明
+    # 比如 bgcolor=theme_color, color="#000000" 这种
+    old_style = r'bgcolor=theme_color, color="#000000"'
+    new_style = r'bgcolor=ft.Colors.with_opacity(0.2, theme_color), color=theme_color, side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color))'
+    
+    if old_style in c:
+      c = re.sub(old_style, new_style, c)
+      with open(filepath, "w", encoding="utf-8") as f:
+        f.write(c)
+      print(f"✅ 顺便优化了 {filename} 中的实心按钮！")
+
+print("🚀 全局按钮玻璃化完毕！请重新运行 python main_final.py。")

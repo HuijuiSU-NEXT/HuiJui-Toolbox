@@ -1,0 +1,39 @@
+# fix_smart_resize.py
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 1. 确保 Video 和 Image 都使用 COVER 模式铺满
+content = content.replace(
+  'bg_video = ftv.Video(expand=True, autoplay=True, playlist_mode=ftv.PlaylistMode.SINGLE, muted=True, visible=False)',
+  'bg_video = ftv.Video(expand=True, autoplay=True, playlist_mode=ftv.PlaylistMode.SINGLE, muted=True, visible=False, fit=ft.BoxFit.COVER)'
+)
+
+# 2. 在 page.add(main_stack) 之后，注入窗口大小自适应监听
+old_stack = 'page.add(main_stack)'
+new_stack = '''page.add(main_stack)
+
+  # 🚨 核心：智能分辨率自适应引擎
+  def on_window_resize(e):
+    # 当窗口大小变化时，强制让背景层重新铺满
+    if bg_video.visible:
+      bg_video.update()
+    if bg_image.visible:
+      bg_image.update()
+    page.update()
+    
+  page.on_resize = on_window_resize'''
+
+if old_stack in content and 'page.on_resize = on_window_resize' not in content:
+  content = content.replace(old_stack, new_stack)
+  print("✅ 已成功注入窗口自适应监听器！")
+else:
+  print("⚠️ 监听器已存在或未找到插入点。")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("🚀 修复完毕！现在拖拽窗口大小，视频壁纸会自动铺满！")

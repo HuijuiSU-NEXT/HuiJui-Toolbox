@@ -1,0 +1,55 @@
+# fix_video_path.py
+import os
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 匹配整个 update_wallpaper_hot 函数，彻底重写里面的视频加载逻辑
+pattern = r'    def update_wallpaper_hot\(\):.*?(?=    def |    # |\Z)'
+
+new_update = '''    def update_wallpaper_hot():
+        import glob
+        all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        if all_files:
+            latest = max(all_files, key=os.path.getctime)
+            src = os.path.basename(latest)
+            abs_src = os.path.join(BASE_DIR, "assets", src) # 🚨 使用绝对路径
+            
+            # 视频格式兼容
+            if src.lower().endswith((".mp4", ".webm", ".mov", ".mkv", ".avi")):
+                bg_image.visible = False
+                
+                # 强制清空并追加绝对路径
+                bg_video.playlist.clear()
+                bg_video.playlist.append(ftv.VideoMedia(abs_src))
+                
+                bg_video.visible = True
+                bg_video.update()
+                bg_video.play()
+                print(f"🎬 已更新高清视频壁纸(绝对路径): {abs_src}")
+            # 图片格式兼容
+            else:
+                bg_video.visible = False
+                bg_video.pause()
+                bg_image.src = src
+                bg_image.visible = True
+                print(f"🖼️ 已更新静态/GIF壁纸: {src}")
+        else:
+            bg_video.visible = False
+            bg_video.pause()
+            bg_image.visible = False
+            print("🧹 未找到壁纸文件")
+            
+        page.update()
+
+'''
+
+content = re.sub(pattern, new_update, content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("✅ 视频加载路径已强制改为绝对路径！")

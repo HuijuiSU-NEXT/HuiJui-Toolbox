@@ -1,0 +1,54 @@
+# check_bin.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+
+# 必须存在的核心文件/目录清单
+required_files = {
+  "adb.exe": "ADB 调试工具",
+  "fastboot.exe": "Fastboot 刷机工具",
+  "scrcpy.exe": "Scrcpy 投屏主程序",
+  "scrcpy-server": "Scrcpy 手机端服务",
+  "payload-dumper-go.exe": "Payload 解包工具",
+  os.path.join("ffmpeg", "ffmpeg.exe"): "FFmpeg 视频转码引擎",
+  os.path.join("MTKClient", "mtk_gui.bat"): "MTKClient GUI 启动器",
+  "ghostlock-extract.exe": "GhostLock 偏移提取器 (可选)",
+  "ghostlock-bin": "GhostLock ARM 载荷 (可选)"
+}
+
+print("=" * 60)
+print("🔍 正在盘点 HuiJui Toolbox Edition 底层军火库 (bin 目录)...")
+print("=" * 60)
+
+all_ok = True
+missing_files = []
+
+for rel_path, desc in required_files.items():
+  full_path = os.path.join(BIN_DIR, rel_path)
+  if os.path.exists(full_path):
+    # 如果是目录，只判断存在；如果是文件，判断大小
+    if os.path.isfile(full_path):
+      size = os.path.getsize(full_path)
+      if size == 0:
+        print(f"⚠️ [损坏] {desc:<30} : {rel_path} (文件大小为 0)")
+        all_ok = False
+        missing_files.append(rel_path)
+      elif size < 1024 * 1024: # 小于 1MB 的文件打印 KB
+        print(f"✅ [正常] {desc:<30} : {rel_path} ({size // 1024} KB)")
+      else:
+        print(f"✅ [正常] {desc:<30} : {rel_path} ({size // (1024 * 1024)} MB)")
+    else:
+      print(f"✅ [目录] {desc:<30} : {rel_path}")
+  else:
+    print(f"❌ [缺失] {desc:<30} : {rel_path}")
+    all_ok = False
+    missing_files.append(rel_path)
+
+print("=" * 60)
+if all_ok:
+  print("🎉 完美！所有核心底层工具都在 bin 目录中，随时可以打包！")
+else:
+  print("🚨 警告：有文件缺失！请检查 bin 目录，否则打包后对应功能会闪退！")
+  print("缺失列表：", missing_files)
+print("=" * 60)

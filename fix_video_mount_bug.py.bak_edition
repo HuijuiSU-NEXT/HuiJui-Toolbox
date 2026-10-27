@@ -1,0 +1,53 @@
+# fix_video_mount_bug.py
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 匹配并重写 load_video_thread 函数内的执行顺序
+pattern = r'            def load_video_thread\(\):.*?(?=            threading\.Thread\(target=load_video_thread)'
+
+new_thread = '''            def load_video_thread():
+                try:
+                    time.sleep(3.0)  # 给主线程 3 秒时间，让首帧静态图完美呈现
+                    
+                    # 1. 先移除旧的 Video
+                    if video_state["current"] and video_state["current"] in main_stack.controls:
+                        main_stack.controls.remove(video_state["current"])
+                        page.update()
+                        time.sleep(0.2)
+                    
+                    # 2. 创建并挂载新 Video
+                    new_video = ftv.Video(expand=True, autoplay=False, playlist_mode=ftv.PlaylistMode.SINGLE, muted=True, visible=False, fit=ft.ImageFit.COVER)
+                    main_stack.controls.insert(0, new_video)
+                    page.update()  # 挂载到 UI 树
+                    
+                    # 3. 等待底层控件被真正渲染出来
+                    time.sleep(0.5)
+                    
+                    # 4. 渲染完成后，再传入视频源并播放
+                    new_video.playlist.clear()
+                    new_video.playlist.append(ftv.VideoMedia(abs_src))
+                    new_video.play()
+                    print(f"🎬 已后台静默加载高清视频壁纸: {abs_src}")
+                    
+                    time.sleep(1.0)
+                    new_video.visible = True
+                    bg_image.visible = False
+                    
+                    video_state["current"] = new_video
+                    page.update()
+                    print("✨ 视频已完美出帧，静态图已撤下，无缝衔接！")
+                except Exception as e:
+                    print(f"❌ 视频加载失败: {e}")
+                    
+'''
+
+content = re.sub(pattern, new_thread, content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("✅ 视频加载时序已修复！控件挂载与播放已分离。")

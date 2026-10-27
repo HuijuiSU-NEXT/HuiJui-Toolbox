@@ -1,0 +1,33 @@
+﻿import re
+
+file_path = "main_final.py"
+with open(file_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 暴力替换所有 ft.ImageFit.XXX 为字符串 "xxx" (Flet 底层直接支持字符串)
+# 这样做彻底避开版本更新导致的枚举类找不到的问题
+content = content.replace("ft.ImageFit.CONTAIN", '"contain"')
+content = content.replace("ft.ImageFit.COVER", '"cover"')
+content = content.replace("ft.ImageFit.FILL", '"fill"')
+content = content.replace("ft.ImageFit.FIT_HEIGHT", '"fitHeight"')
+content = content.replace("ft.ImageFit.FIT_WIDTH", '"fitWidth"')
+content = content.replace("ft.ImageFit.NONE", '"none"')
+content = content.replace("ft.ImageFit.SCALE_DOWN", '"scaleDown"')
+
+# 2. 其他可能报错的枚举也顺手换成字符串
+content = content.replace("ft.FilterQuality.HIGH", '"high"')
+content = content.replace("ft.FilterQuality.MEDIUM", '"medium"')
+content = content.replace("ft.FilterQuality.LOW", '"low"')
+
+# 3. 修复 flet_video 的导入和用法
+if "import flet_video" not in content:
+    # 注入 import
+    content = content.replace("import flet", "import flet\nimport flet_video as ftv", 1)
+
+# 把刚才用的 ftv.Video 里报错的 loop 参数去掉，因为 flet-video 已经废弃了 loop 参数
+content = content.replace("loop=True,", "")
+
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("✅ 已成功适配 Flet 0.28 的字符串枚举与 flet-video！")

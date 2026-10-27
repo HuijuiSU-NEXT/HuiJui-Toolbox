@@ -60,7 +60,7 @@ from binascii import hexlify
 """
 
 preloader_key = bytes.fromhex(
-    "A5DA42C3B4F6C5BAE162C568ADBD26055572247C05586BAA37818D2868949ADB9C4DEE58E7C7AFD090D8951035F84BEB")
+  "A5DA42C3B4F6C5BAE162C568ADBD26055572247C05586BAA37818D2868949ADB9C4DEE58E7C7AFD090D8951035F84BEB")
 aeskey1 = preloader_key[:16]
 aeskey2 = preloader_key[16:32]
 
@@ -69,9 +69,9 @@ iv = AES.new(aeskey1, AES.MODE_ECB).decrypt(seed[:0x10])
 
 out = bytearray()
 for i in range(4):
-    val = unpack("<I", seed[0x10 + i * 4:0x10 + (i * 4) + 4])[0]
-    val2 = unpack("<I", aeskey2[i * 4:(i * 4) + 4])[0]
-    val2 ^= val
-    out.extend(pack("<I", val2))
+  val = unpack("<I", seed[0x10 + i * 4:0x10 + (i * 4) + 4])[0]
+  val2 = unpack("<I", aeskey2[i * 4:(i * 4) + 4])[0]
+  val2 ^= val
+  out.extend(pack("<I", val2))
 
 print(hexlify(out))

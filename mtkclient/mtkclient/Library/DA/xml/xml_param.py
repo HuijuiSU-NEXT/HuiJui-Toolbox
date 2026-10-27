@@ -4,36 +4,36 @@ max_xml_data_length = 0x200000
 
 
 class DataType:
-    DT_PROTOCOL_FLOW = 1
-    DT_MESSAGE = 2
+  DT_PROTOCOL_FLOW = 1
+  DT_MESSAGE = 2
 
 
 class ChecksumAlgorithm:
-    NONE = "NONE"
-    USB = "USB"
-    STORAGE = "STORAGE"
-    USB_STORAGE = "USB-STORAGE"
+  NONE = "NONE"
+  USB = "USB"
+  STORAGE = "STORAGE"
+  USB_STORAGE = "USB-STORAGE"
 
 
 class LogLevel:
-    TRACE = "TRACE"
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARN = "WARN"
-    ERROR = "ERROR"
+  TRACE = "TRACE"
+  DEBUG = "DEBUG"
+  INFO = "INFO"
+  WARN = "WARN"
+  ERROR = "ERROR"
 
 
 class LogChannel:
-    USB = "USB"
-    UART = "UART"
+  USB = "USB"
+  UART = "UART"
 
 
 class BatterySetting:
-    YES = "YES"
-    NO = "NO"
-    AUTO_DETECT = "AUTO-DETECT"
+  YES = "YES"
+  NO = "NO"
+  AUTO_DETECT = "AUTO-DETECT"
 
 
 class FtSystemOSE:
-    OS_WIN = "WINDOWS"
-    OS_LINUX = "LINUX"
+  OS_WIN = "WINDOWS"
+  OS_LINUX = "LINUX"

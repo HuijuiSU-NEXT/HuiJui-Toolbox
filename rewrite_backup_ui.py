@@ -1,0 +1,246 @@
+# rewrite_backup_ui.py
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+backup_path = os.path.join(BASE_DIR, "pages", "backup.py")
+
+backup_code = '''import flet as ft
+import threading
+import subprocess
+import os
+import time
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ADB_PATH = os.path.join(BASE_DIR, "bin", "adb.exe")
+
+# 默认备份路径
+DEFAULT_DIR = os.path.join(os.path.expanduser("~"), "Documents", "HuiJui_Backups")
+
+def build_backup_page(page: ft.Page, theme_color):
+  state = {"save_dir": DEFAULT_DIR}
+
+  log_area = ft.TextField(
+    multiline=True, read_only=True, expand=True, 
+    bgcolor=ft.Colors.TRANSPARENT, color="#00FFD1", 
+    text_size=13, text_style=ft.TextStyle(font_family="Consolas"),
+    border=ft.InputBorder.NONE,
+  )
+  log_container = ft.Container(
+    content=log_area, 
+    bgcolor=page.ui_style.get("log_bg", ft.Colors.with_opacity(0.2, "#000000")), 
+    border_radius=12, padding=15, expand=True, 
+    border=page.ui_style.get("card_border", ft.border.all(1, theme_color))
+  )
+  
+  status_text = ft.Text("等待选择要备份的分区...", size=13, color=theme_color, weight=ft.FontWeight.BOLD, font_family="MiSans")
+  path_display = ft.Text(f"当前保存路径: {state['save_dir']}", size=11, color=ft.Colors.WHITE, font_family="Consolas")
+
+  dir_picker = ft.FilePicker()
+  page.overlay.append(dir_picker)
+  page.update()
+
+  def on_dir_pick(e: ft.FilePickerResultEvent):
+    if e.path:
+      state["save_dir"] = e.path
+      path_display.value = f"当前保存路径: {state['save_dir']}"
+      log(f"📁 备份目录已更改为: {state['save_dir']}")
+      page.update()
+
+  dir_picker.on_result = on_dir_pick
+
+  def pick_directory(e):
+    dir_picker.get_directory_path(dialog_title="选择分区镜像保存目录")
+
+  def open_backup_folder(e):
+    os.makedirs(state["save_dir"], exist_ok=True)
+    try:
+      os.startfile(state["save_dir"])
+    except Exception:
+      log(f"📁 备份目录路径: {state['save_dir']}")
+
+  def log(msg):
+    log_area.value += msg + "\\n"
+    page.update()
+
+  def do_backup(part_name):
+    status_text.value = f"正在处理 {part_name}..."
+    status_text.color = ft.Colors.ORANGE
+    page.update()
+    
+    def thread():
+      log_area.value = ""
+      log(f"> 准备备份分区: {part_name}")
+      page.update()
+
+      bk_dir = state["save_dir"]
+      os.makedirs(bk_dir, exist_ok=True)
+      
+      timestamp = int(time.time())
+      file_name = f"{part_name}_{timestamp}.img"
+      local_file = os.path.join(bk_dir, file_name)
+      remote_file = f"/sdcard/{file_name}"
+
+      log("[1/4] 正在探测分区真实路径...")
+      possible_paths = [
+        f"/dev/block/by-name/{part_name}",
+        f"/dev/block/by-name/{part_name}_a",
+        f"/dev/block/by-name/{part_name}_b",
+        f"/dev/block/bootdevice/by-name/{part_name}"
+      ]
+      
+      block_path = None
+      for p in possible_paths:
+        check = subprocess.run(f'"{ADB_PATH}" shell "su -c \\"ls {p}\\""', shell=True, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        if "No such" not in check.stdout and "No such" not in check.stderr and check.returncode == 0:
+          block_path = p
+          break
+
+      if not block_path:
+        log(f"❌ 错误: 未找到分区 {part_name}。")
+        status_text.value = "备份失败: 分区不存在"
+        status_text.color = ft.Colors.RED
+        page.update()
+        return
+
+      log(f"✅ 找到分区路径: {block_path}")
+
+      log(f"\\n[2/4] 正在通过 Root 提取镜像...")
+      cmd_dd = f'"{ADB_PATH}" shell "su -c \\"dd if={block_path} of={remote_file}\\""'
+      proc = subprocess.Popen(cmd_dd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+      for line in iter(proc.stdout.readline, ''):
+        if line: log(line.strip())
+      proc.wait()
+
+      log(f"\\n[3/4] 正在拉取到电脑...")
+      cmd_pull = f'"{ADB_PATH}" pull {remote_file} "{local_file}"'
+      proc = subprocess.Popen(cmd_pull, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+      for line in iter(proc.stdout.readline, ''):
+        if line: log(line.strip())
+      proc.wait()
+
+      log(f"\\n[4/4] 正在校验并清理临时文件...")
+      subprocess.run(f'"{ADB_PATH}" shell "su -c \\"rm {remote_file}\\""', shell=True, capture_output=True)
+      
+      if os.path.exists(local_file) and os.path.getsize(local_file) > 1024:
+        size_mb = os.path.getsize(local_file) / (1024 * 1024)
+        log(f"\\n✅ 备份成功！文件大小: {size_mb:.2f} MB")
+        log(f"📁 文件已保存至: {local_file}")
+        status_text.value = "备份成功！"
+        status_text.color = ft.Colors.GREEN
+      else:
+        log(f"\\n❌ 备份失败！拉取的文件不存在或大小为 0。")
+        status_text.value = "备份失败！"
+        status_text.color = ft.Colors.RED
+      
+      page.update()
+
+    threading.Thread(target=thread, daemon=True).start()
+
+  partitions_info = [
+    ("boot", ft.Icons.ADB),
+    ("init_boot", ft.Icons.MEMORY),
+    ("recovery", ft.Icons.SETTINGS_BACKUP_RESTORE),
+    ("vbmeta", ft.Icons.SECURITY),
+    ("dtbo", ft.Icons.DEVICE_HUB),
+    ("persist", ft.Icons.FOLDER_SHARED),
+    ("modem", ft.Icons.WIFI_TETHERING),
+    ("super", ft.Icons.DNS)
+  ]
+  
+  grid_cards = []
+  for p_name, p_icon in partitions_info:
+    grid_cards.append(
+      ft.Container(
+        content=ft.Row([
+          ft.Icon(p_icon, color=theme_color, size=20),
+          ft.Text(p_name, size=14, weight=ft.FontWeight.BOLD, color="white", font_family="MiSans")
+        ], alignment=ft.MainAxisAlignment.CENTER),
+        width=130,
+        height=55,
+        bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.WHITE),
+        border=ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE)),
+        border_radius=10,
+        alignment=ft.alignment.center,
+        on_click=lambda e, name=p_name: do_backup(name),
+        on_hover=lambda e: e.control.update(bgcolor=ft.Colors.with_opacity(0.2, theme_color) if e.data == "true" else ft.Colors.with_opacity(0.08, ft.Colors.WHITE))
+      )
+    )
+
+  # 恢复毛玻璃质感
+  return ft.Container(
+    content=ft.Column([
+      ft.Row([
+        ft.Icon(ft.Icons.SAVE, color=theme_color, size=28), 
+        ft.Text("分区备份 (真Root)", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="MiSans"),
+        ft.Container(expand=True),
+        status_text,
+      ]),
+      
+      ft.Container(
+        content=ft.Row([
+          ft.Icon(ft.Icons.FOLDER, color=theme_color, size=16),
+          path_display,
+          ft.Container(expand=True),
+          ft.TextButton("更改目录", icon=ft.Icons.EDIT, on_click=pick_directory, style=ft.ButtonStyle(color=theme_color, text_style=ft.TextStyle(font_family="MiSans"))),
+          ft.ElevatedButton(
+            "打开目录", icon=ft.Icons.OPEN_IN_NEW, on_click=open_backup_folder, 
+            style=ft.ButtonStyle(
+              color=theme_color, 
+              bgcolor=ft.Colors.with_opacity(0.15, theme_color), 
+              side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, theme_color)), 
+              shape=ft.RoundedRectangleBorder(radius=8),
+              elevation=0
+            )
+          ),
+        ]),
+        bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
+        border=ft.border.all(1, ft.Colors.with_opacity(0.3, "#FFFFFF")),
+        border_radius=10, padding=ft.padding.symmetric(horizontal=10, vertical=5)
+      ),
+      ft.Container(height=10),
+      
+      # 防格机警告按钮（玻璃化）
+      ft.Container(
+        content=ft.Row([
+          ft.Column([
+            ft.Text("🛡️ 防格机保命：一键全量备份基带", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.RED_400, font_family="MiSans"),
+            ft.Text("将串行提取 modem, modemst1, modemst2, fsg, nvram 等核心基带分区。", size=12, color=ft.Colors.WHITE70, font_family="MiSans")
+          ], expand=True),
+          ft.ElevatedButton(
+            "一键备份全量基带", icon=ft.Icons.SECURITY, on_click=lambda e: [do_backup(p) for p in ["modem", "modemst1", "fsg", "nvram"]],
+            style=ft.ButtonStyle(
+              color=ft.Colors.RED_300, 
+              bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.RED_400), 
+              side=ft.BorderSide(1.5, ft.Colors.with_opacity(0.6, ft.Colors.RED_400)), 
+              shape=ft.RoundedRectangleBorder(radius=8),
+              padding=ft.padding.symmetric(horizontal=20, vertical=12),
+              elevation=0
+            )
+          )
+        ]),
+        bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.RED_900),
+        border=ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.RED_400)),
+        border_radius=12, padding=20
+      ),
+      ft.Container(height=10),
+      
+      ft.Container(
+        content=ft.Row(grid_cards, wrap=True, spacing=10, run_spacing=10),
+        bgcolor=ft.Colors.with_opacity(0.02, ft.Colors.WHITE), 
+        border=ft.border.all(1, ft.Colors.with_opacity(0.08, ft.Colors.WHITE)), 
+        border_radius=15, padding=15
+      ),
+      
+      ft.Container(height=10),
+      ft.Text("底层通信与备份日志", size=14, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD, font_family="MiSans"),
+      log_container
+    ], expand=True), 
+    expand=True, 
+    padding=20
+  )
+'''
+
+with open(backup_path, "w", encoding="utf-8") as f:
+  f.write(backup_code)
+
+print("✅ pages/backup.py 已全量重写！纯血玻璃质感，按钮不再突兀！")

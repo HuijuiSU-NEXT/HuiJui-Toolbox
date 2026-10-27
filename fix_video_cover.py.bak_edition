@@ -1,0 +1,135 @@
+# fix_video_cover.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+
+# ==================== 1. 修改 settings.py：选中视频时，用 FFmpeg 提取第一帧 ====================
+with open(settings_path, "r", encoding="utf-8") as f:
+    s_content = f.read()
+
+# 找到选中视频并复制文件的那段代码
+old_pick_video = '''                    # 视频格式：直接复制
+                    if ext in ['.mp4', '.webm', '.mov', '.mkv', '.avi']:
+                        shutil.copy2(src_path, new_filepath)
+                        print(f"[Video] 已直接加载高清视频: {new_filepath}")'''
+
+new_pick_video = '''                    # 视频格式：直接复制 + 提取首帧封面
+                    if ext in ['.mp4', '.webm', '.mov', '.mkv', '.avi']:
+                        shutil.copy2(src_path, new_filepath)
+                        print(f"[Video] 已直接加载高清视频: {new_filepath}")
+                        
+                        # 🚨 提取视频第一帧作为封面
+                        ffmpeg_exe = os.path.join(BASE_DIR, "bin", "ffmpeg", "ffmpeg.exe")
+                        cover_path = os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg")
+                        if os.path.exists(cover_path):
+                            try: os.remove(cover_path)
+                            except: pass
+                            
+                        if os.path.exists(ffmpeg_exe):
+                            print(f"[FFmpeg] 正在提取视频首帧封面...")
+                            # -ss 0.1 截取第 0.1 秒的帧，防止第一帧纯黑
+                            cmd_cover = [ffmpeg_exe, "-ss", "0.1", "-i", src_path, "-vframes", "1", "-q:v", "2", "-y", cover_path]
+                            subprocess.run(cmd_cover, check=True, capture_output=True)
+                            print(f"[FFmpeg] 封面提取成功: {cover_path}")'''
+
+if old_pick_video in s_content:
+    s_content = s_content.replace(old_pick_video, new_pick_video)
+    print("✅ settings.py 已加入首帧提取逻辑！")
+else:
+    print("⚠️ 未找到精确匹配的视频复制逻辑，请检查。")
+
+# 确保导入了 subprocess
+if "import subprocess" not in s_content:
+    s_content = s_content.replace("import time", "import time\nimport subprocess")
+
+# 清除壁纸时，顺带清除封面
+old_clear = '''    def clear_wallpaper(e):
+        files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        for f in files:
+            try: os.remove(f)
+            except: pass'''
+new_clear = '''    def clear_wallpaper(e):
+        files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        files.append(os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg"))
+        for f in files:
+            try: os.remove(f)
+            except: pass'''
+s_content = s_content.replace(old_clear, new_clear)
+
+with open(settings_path, "w", encoding="utf-8") as f:
+    f.write(s_content)
+
+# ==================== 2. 修改 main_final.py：启动时先加载封面图，视频就绪后替换 ====================
+with open(main_path, "r", encoding="utf-8") as f:
+    m_content = f.read()
+
+# 替换 update_wallpaper_hot 函数
+pattern = r'    def update_wallpaper_hot\(\):.*?(?=    def |    # |\Z)'
+new_update = '''    def update_wallpaper_hot():
+        all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        cover_path = os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg")
+        
+        if all_files:
+            latest = max(all_files, key=os.path.getctime)
+            src = os.path.basename(latest)
+            abs_src = os.path.join(BASE_DIR, "assets", src)
+            
+            if src.lower().endswith((".mp4", ".webm", ".mov", ".mkv", ".avi")):
+                # 1. 优先显示首帧静态图，实现“秒开”错觉
+                if os.path.exists(cover_path):
+                    bg_image.src = "wallpaper_cover.jpg"
+                    bg_image.visible = True
+                else:
+                    bg_image.visible = False
+                
+                # 2. 后台静默加载视频（先设为不可见）
+                bg_video.visible = False
+                bg_video.playlist.clear()
+                bg_video.playlist.append(ftv.VideoMedia(abs_src))
+                bg_video.play()
+                bg_video.update()
+                print(f"🎬 已后台加载高清视频壁纸: {abs_src}")
+                
+                # 3. 延时 1 秒后，视频渲染出来了，再隐藏图片，显示视频
+                def switch_to_video():
+                    import time
+                    time.sleep(1.2)  # 等待底层解码和初始化
+                    bg_video.visible = True
+                    bg_image.visible = False
+                    bg_video.update()
+                    bg_image.update()
+                    print(f"✨ 视频加载完毕，已切换至动态壁纸！")
+                
+                import threading
+                threading.Thread(target=switch_to_video, daemon=True).start()
+                
+            else:
+                # 如果是静态图
+                bg_video.visible = False
+                bg_video.pause()
+                bg_image.src = src
+                bg_image.visible = True
+                print(f"🖼️ 已更新图片壁纸: {src}")
+                
+                # 清理过期的视频封面
+                if os.path.exists(cover_path):
+                    try: os.remove(cover_path)
+                    except: pass
+        else:
+            bg_video.visible = False
+            bg_video.pause()
+            bg_image.visible = False
+            print("🧹 未找到壁纸文件")
+            
+        page.update()
+
+'''
+m_content = re.sub(pattern, new_update, m_content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(m_content)
+
+print("✅ main_final.py 已加入“首帧秒开 + 动态切换”逻辑！")

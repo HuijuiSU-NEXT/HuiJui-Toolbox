@@ -1,0 +1,55 @@
+# fix_ftv_bug.py
+import os
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 清理恶心的重复 import
+content = re.sub(r'^import flet\s*\r?\n', '', content, flags=re.MULTILINE)
+# 确保第一行是标准的
+if "import flet as ft" not in content.split("\n")[0]:
+    content = "import flet as ft\n" + content
+
+# 2. 物理超度所有的 ftv 垃圾代码（哪个脑残 AI 写的）
+# 匹配包含 ftv 的行
+content = re.sub(r'.*ftv.*', '', content)
+
+# 3. 抹除原来报错的壁纸加载逻辑，替换为最稳的 ft.Image 逻辑
+# 找到 update_wallpaper_hot 函数
+pattern = r'    def update_wallpaper_hot\(\):.*?(?=    def |    # |\Z)'
+new_wallpaper_logic = '''    def update_wallpaper_hot():
+        """还原最稳的壁纸加载逻辑，绝不崩溃！"""
+        import glob
+        import time
+        
+        all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+        if all_files:
+            latest = max(all_files, key=os.path.getctime)
+            src = os.path.basename(latest)
+            # 加个时间戳防缓存
+            bg_image.src = f"{src}?t={int(time.time())}"
+            bg_image.visible = True
+            print(f"🖼️ 已还原并加载壁纸: {src}")
+        else:
+            # 检查默认壁纸
+            default_gif = os.path.join(BASE_DIR, "assets", "default_wallpaper.gif")
+            if os.path.exists(default_gif):
+                bg_image.src = "default_wallpaper.gif"
+                bg_image.visible = True
+                print("🖼️ 已加载默认动态壁纸")
+            else:
+                bg_image.visible = False
+                bg_image.src = None
+                print("🧹 未找到壁纸文件")
+        bg_image.update()
+
+'''
+content = re.sub(pattern, new_wallpaper_logic, content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("✅ 垃圾视频代码已清除！最稳壁纸逻辑已还原！")

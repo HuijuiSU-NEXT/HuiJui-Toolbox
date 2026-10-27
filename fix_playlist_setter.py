@@ -1,0 +1,35 @@
+# fix_playlist_setter.py
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 1. 修复 Video 的初始化参数，确保 playlist_mode 正确
+# 把旧的可能带有 loop 或 playlist 的初始化替换为纯净版
+old_video_init = r'bg_video = ftv\.Video\([^)]*\)'
+new_video_init = 'bg_video = ftv.Video(expand=True, autoplay=True, playlist_mode=ftv.PlaylistMode.SINGLE, muted=True, visible=False)'
+content = re.sub(old_video_init, new_video_init, content)
+
+# 2. 修复 update_wallpaper_hot 里的赋值逻辑
+# 找到旧的赋值行：bg_video.playlist = [ftv.VideoMedia(src)]
+old_assign = 'bg_video.playlist = [ftv.VideoMedia(src)]'
+
+# 新逻辑：先清空，再追加（因为 playlist 是只读的，但它的列表对象本身是可以修改的）
+new_assign = '''bg_video.playlist.clear()
+        bg_video.playlist.append(ftv.VideoMedia(src))'''
+
+if old_assign in content:
+  content = content.replace(old_assign, new_assign)
+  print("✅ 已成功将 playlist 的赋值方式改为 '清空 + 追加'！")
+else:
+  # 兜底正则，防止格式有微小差异
+  pattern = r'bg_video\.playlist\s*=\s*\[ftv\.VideoMedia\(src\)\]'
+  content = re.sub(pattern, new_assign, content)
+  print("✅ 已通过正则完成兜底替换！")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("🚀 修复完毕！请运行 python main_final.py 重新测试视频壁纸。")

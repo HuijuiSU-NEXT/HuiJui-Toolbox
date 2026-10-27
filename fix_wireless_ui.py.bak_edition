@@ -1,0 +1,63 @@
+# fix_wireless_ui.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+wireless_path = os.path.join(BASE_DIR, "pages", "wireless_adb.py")
+
+if os.path.exists(wireless_path):
+    with open(wireless_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 1. 统一输入框样式为半透明玻璃
+    # 匹配页面中所有的 TextField (如 配对IP, 配对端口, 6位码 等)
+    # 先清理掉旧的写死的 bgcolor 和 border_color
+    content = re.sub(r'bgcolor=ft\.Colors\.with_opacity\(0\.1,\s*ft\.Colors\.WHITE\)', 'bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF")', content)
+    content = re.sub(r'bgcolor="#1A233A"', 'bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF")', content)
+    content = re.sub(r'bgcolor=ft\.Colors\.TRANSPARENT', 'bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF")', content)
+    content = re.sub(r'border_color=ft\.Colors\.with_opacity\(0\.2,\s*theme_color\)', 'border_color=ft.Colors.with_opacity(0.4, "#FFFFFF")', content)
+    
+    # 强制输入框使用微透明白玻璃底 + 高亮白边框
+    # 找所有的 TextField，加上统一样式
+    # 为了不破坏逻辑，这里直接替换具体的 UI 定义（假设页面上的输入框是直接定义宽度的）
+    content = content.replace(
+        'ft.TextField(label="IP 地址"', 'ft.TextField(label="IP 地址", bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), border_radius=8, color="white", text_style=ft.TextStyle(font_family="MiSans"), label_style=ft.TextStyle(color=ft.Colors.WHITE70, font_family="MiSans")'
+    )
+    content = content.replace(
+        'ft.TextField(label="端口"', 'ft.TextField(label="端口", bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), border_radius=8, color="white", text_style=ft.TextStyle(font_family="MiSans"), label_style=ft.TextStyle(color=ft.Colors.WHITE70, font_family="MiSans")'
+    )
+    content = content.replace(
+        'ft.TextField(label="6位配对码"', 'ft.TextField(label="6位配对码", bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), border_radius=8, color="white", text_style=ft.TextStyle(font_family="MiSans"), label_style=ft.TextStyle(color=ft.Colors.WHITE70, font_family="MiSans")'
+    )
+    content = content.replace(
+        'ft.TextField(label="连接 IP"', 'ft.TextField(label="连接 IP", bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), border_radius=8, color="white", text_style=ft.TextStyle(font_family="MiSans"), label_style=ft.TextStyle(color=ft.Colors.WHITE70, font_family="MiSans")'
+    )
+    content = content.replace(
+        'ft.TextField(label="连接端口"', 'ft.TextField(label="连接端口", bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"), border_color=ft.Colors.with_opacity(0.4, "#FFFFFF"), border_radius=8, color="white", text_style=ft.TextStyle(font_family="MiSans"), label_style=ft.TextStyle(color=ft.Colors.WHITE70, font_family="MiSans")'
+    )
+
+    # 2. 统一按钮样式
+    # 一键开启按钮
+    content = content.replace(
+        'style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=15)',
+        'style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=20, vertical=12), elevation=0)'
+    )
+    
+    # 配对和连接按钮
+    content = content.replace(
+        'style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.with_opacity(0.2, "#000000"), side=ft.BorderSide(1, theme_color), shape=ft.RoundedRectangleBorder(radius=10), padding=15)',
+        'style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10), elevation=0)'
+    )
+    
+    # 断开连接按钮
+    content = content.replace(
+        'style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE), shape=ft.RoundedRectangleBorder(radius=10), padding=15)',
+        'style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.with_opacity(0.1, "#000000"), side=ft.BorderSide(1, ft.Colors.with_opacity(0.3, "#FFFFFF")), shape=ft.RoundedRectangleBorder(radius=10), padding=ft.padding.symmetric(horizontal=15, vertical=10))'
+    )
+
+    with open(wireless_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    print("✅ 无线调试页面的按钮和输入框已彻底玻璃化！")
+else:
+    print("❌ 找不到 pages/wireless_adb.py")

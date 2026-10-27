@@ -1,0 +1,17 @@
+# fix_boxfit_bug.py
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 把错误的 ft.BoxFit.COVER 全部替换为正确的 ft.ImageFit.COVER
+if "ft.BoxFit.COVER" in content:
+  content = content.replace("ft.BoxFit.COVER", "ft.ImageFit.COVER")
+  print("✅ 已成功将所有的 ft.BoxFit.COVER 替换为 ft.ImageFit.COVER！")
+else:
+  print("⚠️ 未找到 ft.BoxFit.COVER，可能已经修改过了。")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("🚀 修复完毕！请重新运行 python main_final.py。")

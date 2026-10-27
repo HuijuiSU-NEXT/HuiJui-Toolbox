@@ -1,0 +1,67 @@
+﻿import re
+
+file_path = "main_final.py"
+with open(file_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 1. 将启动入口从 ft.app(...) 替换为 ft.run(main)
+# 注意：assets_dir 参数在 ft.run 中已变更，这里先直接替换为无参版本，确保能启动
+content = re.sub(r'ft\.app\s*\(\s*target\s*=\s*main\s*,\s*assets_dir\s*=\s*["\']assets["\']\s*\)', 'ft.run(main)', content)
+content = re.sub(r'ft\.app\s*\(\s*target\s*=\s*main\s*\)', 'ft.run(main)', content)
+
+# 2. 确保导入了 flet_video
+if "import flet_video" not in content:
+  content = content.replace("import flet", "import flet\nimport flet_video as ftv", 1)
+
+# 3. 重写 update_wallpaper_hot 中的视频部分，使用官方推荐的 playlist_mode 实现循环
+pattern = re.compile(r'def update_wallpaper_hot\(\):.*?page\.update_wallpaper_hot = update_wallpaper_hot', re.DOTALL)
+
+new_func = '''def update_wallpaper_hot():
+    import glob
+    import os
+    target_file = None
+
+    all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+    if all_files:
+      target_file = max(all_files, key=os.path.getctime)
+
+    if target_file and os.path.exists(target_file):
+      ext = os.path.splitext(target_file)[1].lower()
+      
+      if ext in ['.mp4', '.webm', '.mov']:
+        # 🚨 Flet 1.0 官方推荐的 flet-video 用法，自动循环
+        media = ftv.VideoMedia(target_file)
+        new_bg = ftv.Video(
+          playlist=[media],
+          autoplay=True,
+          muted=True,
+          playlist_mode=ftv.PlaylistMode.LOOP
+        )
+        print(f"🎬 视频壁纸已加载 (循环模式): {os.path.basename(target_file)}")
+      else:
+        new_bg = ft.Image(
+          src=target_file,
+          fit=ft.ImageFit.COVER
+        )
+        print(f"🖼️ 图片壁纸已加载: {os.path.basename(target_file)}")
+      
+      new_bg.visible = True
+      main_stack.controls[0] = new_bg
+    else:
+      print("🧹 未找到壁纸文件，清空背景")
+      main_stack.controls[0] = ft.Container(expand=True)
+      
+    page.update()
+
+  page.update_wallpaper_hot = update_wallpaper_hot'''
+
+if pattern.search(content):
+  content = pattern.sub(new_func, content)
+  print("✅ 视频壁纸引擎已替换为 flet-video + 循环模式")
+else:
+  print("⚠️ 未找到 update_wallpaper_hot 函数，跳过视频引擎替换")
+
+with open(file_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("✅ 启动入口已修正为 ft.run(main)")

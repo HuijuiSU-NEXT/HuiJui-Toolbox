@@ -1,0 +1,57 @@
+# fix_glass_v2.py
+import os
+import shutil
+import sys
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+TARGET = os.path.join(BASE, "main_final.py")
+
+# 把刚才的 0.75 纯黑死块，换成深邃的深蓝灰玻璃（0.55 透光度），完美融入蓝色壁纸
+OLD_BG = 'padding=15, bgcolor=ft.Colors.with_opacity(0.75, "#090A0F"), border_radius=16, border=page.ui_style["card_border"]'
+NEW_BG = 'padding=15, bgcolor=ft.Colors.with_opacity(0.55, "#0D1017"), border_radius=16, border=page.ui_style["card_border"]'
+
+# 顺便给那几个标签（品牌、型号）加一点微弱的背景提亮，让字浮出来
+OLD_LABELS = '''                        ft.Row([ft.Text("品牌", color="#E2E8F0", size=12, weight=ft.FontWeight.W_600), info_brand], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("型号", color="#E2E8F0", size=12, weight=ft.FontWeight.W_600), info_model], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("系统", color="#E2E8F0", size=12, weight=ft.FontWeight.W_600), info_android], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("Root", color="#E2E8F0", size=12, weight=ft.FontWeight.W_600), info_root], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)'''
+NEW_LABELS = '''                        ft.Row([ft.Text("品牌", color="#B0C4DE", size=12, weight=ft.FontWeight.W_900), info_brand], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("型号", color="#B0C4DE", size=12, weight=ft.FontWeight.W_900), info_model], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("系统", color="#B0C4DE", size=12, weight=ft.FontWeight.W_900), info_android], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Row([ft.Text("Root", color="#B0C4DE", size=12, weight=ft.FontWeight.W_900), info_root], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)'''
+
+def main():
+    if not os.path.isfile(TARGET):
+        print(f"[X] 找不到 {TARGET}")
+        sys.exit(1)
+    
+    with open(TARGET, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    changes = 0
+    if OLD_BG in content:
+        content = content.replace(OLD_BG, NEW_BG, 1)
+        print("[OK] 死黑块已还原为深邃蓝灰玻璃")
+        changes += 1
+    if OLD_LABELS in content:
+        content = content.replace(OLD_LABELS, NEW_LABELS, 1)
+        print("[OK] 标签颜色改为淡钢蓝，字重加粗")
+        changes += 1
+
+    if changes == 0:
+        print("[!] 没找到要修改的代码块。")
+        sys.exit(2)
+
+    try:
+        compile(content, TARGET, "exec")
+    except SyntaxError as e:
+        print(f"[X] 语法预检失败: {e}")
+        sys.exit(3)
+
+    shutil.copy2(TARGET, TARGET + ".bak_glass_v2")
+    with open(TARGET, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+    print(f"[✅] 液态玻璃质感修复完成！")
+
+if __name__ == "__main__":
+    main()

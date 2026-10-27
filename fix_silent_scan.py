@@ -1,0 +1,62 @@
+# fix_silent_scan.py
+import os
+import shutil
+import sys
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+TARGET = os.path.join(BASE, "main_final.py")
+
+# 匹配咱们上一轮加过 [DEBUG] 的 auto_scan_loop
+OLD_AUTO = '''    def auto_scan_loop():
+      time.sleep(1)
+      while getattr(page, "is_running", True):
+        try:
+          res = scan_device_data()
+          apply_device_state(res, manual=False)
+        except Exception as e:
+          print(f"❌ [DEBUG] 自动扫描异常: {e}")
+        time.sleep(2.5)'''
+
+# 新的逻辑：3秒查一次，只要发现设备不为 OFFLINE，立刻退出循环
+NEW_AUTO = '''    def auto_scan_loop():
+      time.sleep(1) # 初始延迟，等UI先渲染出来
+      while getattr(page, "is_running", True):
+        try:
+          res = scan_device_data()
+          # 如果状态不是离线（意味着连上了 ADB、Fastboot 或 EDL）
+          if res.get("state") != "OFFLINE":
+            apply_device_state(res, manual=False)
+            print("✅ [静默扫描] 捕获到设备，自动检测线程已安全退出。")
+            break # 查到设备了，立刻停止轮询
+        except Exception as e:
+          print(f"❌ [静默扫描] 检查异常: {e}")
+        
+        time.sleep(3) # 3秒查一次'''
+
+def main():
+  if not os.path.isfile(TARGET):
+    print(f"[X] 找不到 {TARGET}")
+    sys.exit(1)
+  
+  with open(TARGET, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  if OLD_AUTO not in content:
+    print("[!] 没匹配到 auto_scan_loop 代码块，可能已经被修改过。")
+    sys.exit(2)
+
+  content = content.replace(OLD_AUTO, NEW_AUTO, 1)
+
+  try:
+    compile(content, TARGET, "exec")
+  except SyntaxError as e:
+    print(f"[X] 语法预检失败: {e}")
+    sys.exit(3)
+
+  shutil.copy2(TARGET, TARGET + ".bak_silentscan")
+  with open(TARGET, "w", encoding="utf-8", newline="\n") as f:
+    f.write(content)
+  print("[✅] 3秒静默检测已实装！查到设备自动停止！")
+
+if __name__ == "__main__":
+  main()

@@ -1,0 +1,147 @@
+# fix_smart_ui_v2.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+theme_path = os.path.join(BASE_DIR, "ui_theme.py")
+
+# ==================== 1. 重写 ui_theme.py：加入智能亮度感应 ====================
+ui_theme_code = '''import flet as ft
+from core_api import CFG
+
+def get_ui_styles(theme_color):
+  material = CFG.get("ui_material", "default")
+  blur_val = CFG.get("blur_radius", 10)
+  
+  # 🚨 读取智能计算出的壁纸亮度 (0-255)
+  brightness = CFG.get("bg_brightness", 128)
+  
+  # 智能决定卡片底色：浅色壁纸用黑玻璃，深色壁纸用白玻璃
+  if brightness > 150:
+    # 浅色壁纸 (比如白天、浅色二次元)：用深色透明底
+    base_card_bg = ft.Colors.with_opacity(0.45, "#000000")
+    base_border = ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE))
+    nav_bg = ft.Colors.with_opacity(0.3, "#000000")
+  else:
+    # 深色壁纸 (比如夜景、极光)：用白色透明底
+    base_card_bg = ft.Colors.with_opacity(0.08, ft.Colors.WHITE)
+    base_border = ft.border.all(1.5, ft.Colors.with_opacity(0.6, ft.Colors.WHITE))
+    nav_bg = ft.Colors.with_opacity(0.1, ft.Colors.WHITE)
+
+  if material == "frosted":
+    return {
+      "type": "frosted",
+      "overlay_bg": ft.Colors.with_opacity(0.15, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": nav_bg,
+      "side_bg": nav_bg,
+      "card_bg": base_card_bg,
+      "card_border": base_border,
+      "log_bg": ft.Colors.with_opacity(0.4, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+  elif material == "liquid":
+    # 液态玻璃：保留渐变反光，但底色根据亮度自动适配
+    if brightness > 150:
+      card_gradient = ft.LinearGradient(
+        begin=ft.alignment.top_left, end=ft.alignment.bottom_right,
+        colors=[ft.Colors.with_opacity(0.35, "#000000"), ft.Colors.with_opacity(0.15, "#000000")]
+      )
+    else:
+      card_gradient = ft.LinearGradient(
+        begin=ft.alignment.top_left, end=ft.alignment.bottom_right,
+        colors=[ft.Colors.with_opacity(0.15, ft.Colors.WHITE), ft.Colors.with_opacity(0.02, ft.Colors.WHITE)]
+      )
+      
+    return {
+      "type": "liquid",
+      "overlay_bg": ft.Colors.with_opacity(0.05, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": nav_bg,
+      "side_bg": nav_bg,
+      "card_bg": card_gradient,
+      "card_border": base_border,
+      "log_bg": ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+      "log_color": theme_color
+    }
+  else:
+    return {
+      "type": "default",
+      "overlay_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "overlay_blur": None,
+      "nav_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "side_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "card_border": ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+
+def setup_page_style(page: ft.Page):
+  theme_color = CFG.get("theme_color", "#39C5BB")
+  page.bgcolor = ft.Colors.TRANSPARENT
+  return theme_color
+'''
+with open(theme_path, "w", encoding="utf-8") as f:
+  f.write(ui_theme_code)
+print("✅ ui_theme.py 已升级：支持读取壁纸亮度，动态适配卡片底色！")
+
+# ==================== 2. 修改 settings.py：加入智能感知逻辑 ====================
+with open(settings_path, "r", encoding="utf-8") as f:
+  s_content = f.read()
+
+# 在文件选中的末尾，加入 PIL 亮度分析并存入 CFG
+old_logic = '''          if hasattr(page, "update_wallpaper_hot"):
+            page.update_wallpaper_hot()
+            
+          show_snackbar("高清壁纸已应用！")'''
+
+new_logic = '''          # 🚨 核心：智能环境光感知
+          try:
+            from PIL import ImageStat
+            # 如果是视频，分析它的首帧封面；如果是图片，分析图片本身
+            analyze_path = cover_path if ext in ['.mp4', '.webm', '.mov', '.mkv', '.avi'] else new_filepath
+            
+            if os.path.exists(analyze_path):
+              img = Image.open(analyze_path).convert('L') # 转为灰度图
+              img = img.resize((50, 50), Image.Resampling.BILINEAR) # 缩小降低计算量
+              stat = ImageStat.Stat(img)
+              avg_brightness = stat.mean[0]
+              
+              print(f"🧠 [智能UI] 检测到壁纸平均亮度: {avg_brightness:.1f}")
+              CFG.set("bg_brightness", avg_brightness)
+              CFG.save()
+              
+              if avg_brightness > 150:
+                print("🧠 [智能UI] 浅色壁纸 -> 已自动切换为深色玻璃质感")
+              else:
+                print("🧠 [智能UI] 深色壁纸 -> 已自动切换为通透白玻璃质感")
+          except Exception as e:
+            print(f"智能分析失败: {e}")
+
+          if hasattr(page, "update_wallpaper_hot"):
+            page.update_wallpaper_hot()
+            
+          show_snackbar("高清壁纸已应用，已智能适配 UI！")'''
+
+if old_logic in s_content:
+  s_content = s_content.replace(old_logic, new_logic)
+  print("✅ settings.py 已加入壁纸亮度智能分析逻辑！")
+else:
+  print("⚠️ 未找到精确匹配的刷新逻辑，请检查。")
+
+with open(settings_path, "w", encoding="utf-8") as f:
+  f.write(s_content)
+
+# ==================== 3. 强制刷新 main_final.py ====================
+# 确保 main_final.py 里的 build_main_ui 每次刷新时都会重新读取 ui_style
+with open(main_path, "r", encoding="utf-8") as f:
+  m_content = f.read()
+
+# 如果由于某种原因没刷新，强制在这里补一刀
+if "page.ui_style = ui_theme.get_ui_styles(theme_color)" not in m_content:
+  print("⚠️ main_final.py 中缺少 ui_style 刷新，请检查！")
+else:
+  print("✅ main_final.py 的 UI 刷新逻辑完好！")

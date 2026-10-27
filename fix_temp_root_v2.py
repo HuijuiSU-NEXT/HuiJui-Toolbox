@@ -1,207 +1,146 @@
-# fix_temp_root_v2.py
+# fix_temp_root_v2.py · 第二轮加固：run_cmd 超时 + log 批量刷新
+# 铁律 3 合规：精确 str.replace，先备份，语法预检通过才写回
+
 import os
+import shutil
+import sys
 
-code = '''import flet as ft
-import threading
-import subprocess
-import os
-import time
-import re
-import urllib.request
+TARGET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages", "temp_root.py")
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BIN_DIR = os.path.join(BASE_DIR, "bin")
-DUMPER_PATH = os.path.join(BIN_DIR, "payload-dumper-go.exe")
-ADB_PATH = os.path.join(BIN_DIR, "adb.exe")
+OLD_LOG = (
+  '  def log(msg):\n'
+  '    log_area.value += msg + "\\n"\n'
+  '    page.update()'
+)
 
-def build_temp_root_page(page: ft.Page, theme_color):
-    # ================= UI 组件 =================
-    status_text = ft.Text("等待输入 OTA 链接或本地 boot.img...", size=13, weight=ft.FontWeight.W_600, color=theme_color, font_family="Microsoft YaHei")
-    
-    input_path = ft.TextField(
-        label="OTA 链接 (http...) 或本地镜像路径",
-        hint_text="例如: https://ota.example.com/update.zip",
-        bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
-        color="white",
-        border_color=ft.Colors.with_opacity(0.2, theme_color),
-        expand=True
-    )
-    
-    log_area = ft.TextField(
-        multiline=True, read_only=True, expand=True, 
-        bgcolor=ft.Colors.TRANSPARENT, color="#00FFD1", 
-        text_size=13, text_style=ft.TextStyle(font_family="Consolas"),
-        border=ft.InputBorder.NONE,
-    )
-    log_container = ft.Container(
-        content=log_area, bgcolor="#05070A", border_radius=12,
-        padding=15, expand=True, border=ft.border.all(1, ft.Colors.with_opacity(0.15, theme_color))
-    )
-    
-    state = {"boot_img": None, "kernel": None, "is_supported": False}
+NEW_LOG = (
+  '  _log_lock = threading.Lock()\n'
+  '  _log_buf = []\n'
+  '  _log_last = [0.0]\n'
+  '\n'
+  '  def _flush_log():\n'
+  '    with _log_lock:\n'
+  '      if not _log_buf:\n'
+  '        return\n'
+  '      log_area.value += "\\n".join(_log_buf) + "\\n"\n'
+  '      _log_buf.clear()\n'
+  '      _log_last[0] = time.time()\n'
+  '    try:\n'
+  '      page.update()\n'
+  '    except Exception:\n'
+  '      pass\n'
+  '\n'
+  '  def log(msg):\n'
+  '    with _log_lock:\n'
+  '      _log_buf.append(msg)\n'
+  '      should = (time.time() - _log_last[0] > 0.15) or (len(_log_buf) >= 20)\n'
+  '    if should:\n'
+  '      _flush_log()'
+)
 
-    btn_analyze = ft.ElevatedButton(
-        "自动解析并检测", icon=ft.Icons.SEARCH, 
-        style=ft.ButtonStyle(color="#000000", bgcolor=theme_color, shape=ft.RoundedRectangleBorder(radius=10), padding=15)
-    )
-    btn_root = ft.ElevatedButton(
-        "开始临时 Root", icon=ft.Icons.SECURITY, disabled=True,
-        style=ft.ButtonStyle(color="#000000", bgcolor=ft.Colors.GREEN_400, shape=ft.RoundedRectangleBorder(radius=10), padding=15)
-    )
+OLD_RUN = (
+  '  def run_cmd(cmd):\n'
+  "    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0\n"
+  '    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding=\'utf-8\', errors=\'replace\', creationflags=creationflags)\n'
+  '    out = ""\n'
+  "    for line in iter(proc.stdout.readline, ''):\n"
+  '      if line:\n'
+  '        log(line.strip())\n'
+  '        out += line\n'
+  '    proc.wait()\n'
+  '    return proc.returncode, out'
+)
 
-    def log(msg):
-        log_area.value += msg + "\\n"
-        page.update()
+NEW_RUN = (
+  '  def run_cmd(cmd, timeout=600):\n'
+  "    creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0\n"
+  '    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding=\'utf-8\', errors=\'replace\', creationflags=creationflags)\n'
+  '    out_parts = []\n'
+  '\n'
+  '    def _reader():\n'
+  '      try:\n'
+  "        for line in iter(proc.stdout.readline, ''):\n"
+  '          if line:\n'
+  '            log(line.strip())\n'
+  '            out_parts.append(line)\n'
+  '      except Exception:\n'
+  '        pass\n'
+  '\n'
+  '    rt = threading.Thread(target=_reader, daemon=True)\n'
+  '    rt.start()\n'
+  '    timed_out = False\n'
+  '    try:\n'
+  '      proc.wait(timeout=timeout)\n'
+  '    except subprocess.TimeoutExpired:\n'
+  '      timed_out = True\n'
+  '      log(f"⚠️ 命令超时 ({timeout}s)，强制终止")\n'
+  '      try:\n'
+  '        proc.kill()\n'
+  '      except Exception:\n'
+  '        pass\n'
+  '    try:\n'
+  '      rt.join(timeout=3)\n'
+  '    except Exception:\n'
+  '      pass\n'
+  '    _flush_log()\n'
+  '    if timed_out:\n'
+  '      return -1, "".join(out_parts)\n'
+  '    return proc.returncode, "".join(out_parts)'
+)
 
-    # ================= 核心检测流程 =================
-    def download_file(url, dest):
-        log(f"> 开始下载: {url}")
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response, open(dest, 'wb') as out_file:
-                data = response.read(1024 * 1024)
-                while data:
-                    out_file.write(data)
-                    data = response.read(1024 * 1024)
-            return True
-        except Exception as e:
-            log(f"❌ 下载失败: {e}")
-            return False
+REPLACEMENTS = [
+  (OLD_LOG, NEW_LOG, "log() 改为带锁批量刷（150ms 或 20 行）"),
+  (OLD_RUN, NEW_RUN, "run_cmd() 加 600s 超时 + 独立读线程 + 结束强刷日志"),
+]
 
-    def analyze_flow():
-        source = input_path.value.strip()
-        if not source:
-            log("❌ 请先输入链接或路径！")
-            return
-            
-        btn_analyze.disabled = True
-        status_text.value = "正在执行分析，请稍候..."
-        log_area.value = ""
-        page.update()
 
-        boot_path = ""
-        zip_path = ""
+def main():
+  if not os.path.isfile(TARGET):
+    print(f"[X] 找不到目标文件: {TARGET}")
+    sys.exit(1)
 
-        # 1. 获取文件
-        if source.startswith("http"):
-            zip_path = os.path.join(BASE_DIR, "ota_update.zip")
-            if not download_file(source, zip_path):
-                btn_analyze.disabled = False
-                return
-        else:
-            if source.lower().endswith(".zip"):
-                zip_path = source
-            elif source.lower().endswith(".img"):
-                boot_path = source
+  with open(TARGET, "r", encoding="utf-8") as f:
+    content = f.read()
+  original = content
 
-        # 2. 如果是 ZIP，解包 boot.img
-        if zip_path:
-            log(f"> 检测到压缩包，正在提取 boot.img...")
-            if not os.path.exists(DUMPER_PATH):
-                log("❌ 严重错误: bin 目录下找不到 payload-dumper-go.exe！")
-                btn_analyze.disabled = False
-                return
-            
-            cmd = f'"{DUMPER_PATH}" -o "{BASE_DIR}" "{zip_path}"'
-            creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-            proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace', creationflags=creationflags)
-            for line in iter(proc.stdout.readline, ''):
-                if line: log(line.strip())
-            proc.wait()
+  print("=" * 60)
+  print(f"目标: {TARGET}")
+  print("=" * 60)
 
-            # 找解出来的 boot.img
-            found = False
-            for root_dir, _, files in os.walk(BASE_DIR):
-                if "boot.img" in files:
-                    boot_path = os.path.join(root_dir, "boot.img")
-                    found = True
-                    break
-            
-            if not found:
-                log("❌ 解包失败，找不到 boot.img！")
-                btn_analyze.disabled = False
-                return
+  failed = []
+  for old, new, desc in REPLACEMENTS:
+    if old in content:
+      content = content.replace(old, new, 1)
+      print(f"[OK]  {desc}")
+    else:
+      failed.append(desc)
+      print(f"[FAIL] {desc} —— 源片段未匹配")
 
-        # 3. 解析内核版本 (从二进制直接正则匹配)
-        if boot_path and os.path.exists(boot_path):
-            log(f"> 正在解析内核版本: {os.path.basename(boot_path)}")
-            try:
-                with open(boot_path, 'rb') as f:
-                    content = f.read()
-                    # 搜索 "Linux version 6.x.x..."
-                    match = re.search(rb"Linux version (\d+\.\d+\.\d+[^\s\\x00]*)", content)
-                    if match:
-                        kernel_ver = match.group(1).decode('utf-8', errors='ignore')
-                        state["kernel"] = kernel_ver
-                        log(f"✅ 提取成功! 内核版本: {kernel_ver}")
-                        
-                        # 4. 漏洞判定逻辑
-                        log("\\n> 开始匹配 GhostLock (CVE-2026-43499) 适配条件...")
-                        if "6.6." in kernel_ver and int(kernel_ver.split('.')[2]) >= 140:
-                            log("❌ 已修复: 您的内核版本 >= 6.6.140，漏洞已被修补。")
-                        elif any(ver in kernel_ver for ver in ["6.1.", "6.6.", "6.12."]):
-                            log("✅ 核心版本属于 6.1 / 6.6 / 6.12 族，极大概率支持临时 Root！")
-                            state["is_supported"] = True
-                            state["boot_img"] = boot_path
-                            btn_root.disabled = False
-                        else:
-                            log("⚠️ 内核版本不在已知适配范围内，大概率不支持。")
-                    else:
-                        log("❌ 未能从镜像中提取到 Linux version 信息。")
-            except Exception as e:
-                log(f"❌ 解析异常: {e}")
-        else:
-            log("❌ 找不到有效的 boot.img 文件。")
+  if failed:
+    print("\n[!] 有替换失败，为保护源文件，本次不写回。")
+    print("  请把 [FAIL] 行贴给 AI 重新对齐。")
+    sys.exit(2)
 
-        btn_analyze.disabled = False
-        page.update()
+  if content == original:
+    print("\n[!] 内容无变化，可能已经修过了。")
+    return
 
-    def start_root_flow():
-        if not state["is_supported"]: return
-        log("\\n[ 启动底层注入流程 ]")
-        log("> 正在推送漏洞载荷至设备...")
-        log("> 执行内存提权...")
-        log("✅ uid=0 获取成功！(模拟)")
-        log("💡 提示: 真实利用代码需接入对应内核偏移。重启后失效。")
-        status_text.value = "Root 提权完成！"
-        status_text.color = ft.Colors.GREEN
-        page.update()
+  try:
+    compile(content, TARGET, "exec")
+  except SyntaxError as e:
+    print(f"\n[X] 语法预检失败，不写回: {e}")
+    sys.exit(3)
 
-    btn_analyze.on_click = lambda _: threading.Thread(target=analyze_flow, daemon=True).start()
-    btn_root.on_click = lambda _: threading.Thread(target=start_root_flow, daemon=True).start()
+  backup = TARGET + ".bak2"
+  shutil.copy2(TARGET, backup)
+  print(f"\n[OK]  原文件已备份 → {backup}")
 
-    # ================= UI 组装 =================
-    return ft.Container(
-        content=ft.Column([
-            ft.Row([
-                ft.Icon(ft.Icons.SECURITY, color=theme_color, size=28),
-                ft.Text("临时 Root · 动态内核解析引擎", size=24, weight=ft.FontWeight.BOLD, color="white", font_family="Microsoft YaHei")
-            ]),
-            ft.Container(height=10),
-            
-            ft.Container(
-                content=ft.Column([
-                    status_text,
-                    ft.Container(height=5),
-                    ft.Row([input_path]),
-                    ft.Row([btn_analyze, btn_root], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-                ]),
-                bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
-                border=ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
-                border_radius=15,
-                padding=20
-            ),
-            
-            ft.Container(height=10),
-            ft.Text("解析与提权日志", size=14, color=ft.Colors.GREY_400, weight=ft.FontWeight.BOLD, font_family="Microsoft YaHei"),
-            log_container
-        ], expand=True),
-        expand=True,
-        padding=20
-    )
-'''
+  with open(TARGET, "w", encoding="utf-8", newline="\n") as f:
+    f.write(content)
+  print(f"[OK]  已写回 → {TARGET}")
+  print("\n[✅] 第二轮加固完成！下一步：python main_final.py 复测")
+  print("   想回滚：copy pages\\temp_root.py.bak2 pages\\temp_root.py")
 
-with open("pages/temp_root.py", "w", encoding="utf-8") as f:
-    f.write(code)
 
-print("✅ 全自动链接解析版 [临时 Root] 页面已生成！")
+if __name__ == "__main__":
+  main()

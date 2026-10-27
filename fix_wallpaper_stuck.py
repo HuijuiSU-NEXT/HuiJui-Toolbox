@@ -1,0 +1,113 @@
+# fix_wallpaper_stuck.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+
+# ==================== 1. 修复 settings.py：不要删掉封面！ ====================
+with open(settings_path, "r", encoding="utf-8") as f:
+  s_content = f.read()
+
+old_clear = '''          # 清理旧壁纸
+          old_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+          for old_f in old_files:
+            if old_f != new_filepath and os.path.exists(old_f):
+              try: os.remove(old_f)
+              except: pass'''
+
+new_clear = '''          # 清理旧壁纸（保留最新生成的视频和封面）
+          cover_path = os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg")
+          old_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+          for old_f in old_files:
+            if old_f != new_filepath and old_f != cover_path and os.path.exists(old_f):
+              try: os.remove(old_f)
+              except: pass'''
+
+if old_clear in s_content:
+  s_content = s_content.replace(old_clear, new_clear)
+  print("✅ settings.py 清理逻辑已修复，不再误删封面！")
+else:
+  print("⚠️ settings.py 未找到清理逻辑，请检查。")
+
+with open(settings_path, "w", encoding="utf-8") as f:
+  f.write(s_content)
+
+# ==================== 2. 修复 main_final.py：用异步线程加载视频，防止卡死主线程 ====================
+with open(main_path, "r", encoding="utf-8") as f:
+  m_content = f.read()
+
+pattern = r'  def update_wallpaper_hot\(\):.*?(?=  def |  # |\Z)'
+new_update = '''  def update_wallpaper_hot():
+    import glob
+    import threading
+    import time
+    
+    all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+    cover_path = os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg")
+    
+    # 优先筛选视频文件
+    video_files = [f for f in all_files if f.lower().endswith((".mp4", ".webm", ".mov", ".mkv", ".avi"))]
+    
+    if video_files:
+      latest = max(video_files, key=os.path.getctime)
+      src = os.path.basename(latest)
+      abs_src = os.path.join(BASE_DIR, "assets", src)
+      
+      # 1. 秒开封面
+      if os.path.exists(cover_path):
+        bg_image.src = "wallpaper_cover.jpg"
+        bg_image.visible = True
+        print(f"🖼️ 已显示视频首帧封面")
+      else:
+        bg_image.visible = False
+        
+      bg_video.visible = False
+      
+      # 2. 后台加载视频（绝不同步阻塞主线程！）
+      def load_video_thread():
+        try:
+          bg_video.playlist.clear()
+          bg_video.playlist.append(ftv.VideoMedia(abs_src))
+          bg_video.play()
+          bg_video.update()
+          print(f"🎬 已后台加载高清视频壁纸: {abs_src}")
+          
+          # 3. 等 1 秒让底层加载，然后无缝切换
+          time.sleep(1.2)
+          bg_video.visible = True
+          bg_image.visible = False
+          bg_video.update()
+          bg_image.update()
+          print(f"✨ 视频加载完毕，已切换至动态壁纸！")
+        except Exception as e:
+          print(f"❌ 视频加载失败: {e}")
+          
+      threading.Thread(target=load_video_thread, daemon=True).start()
+      
+    else:
+      # 没有视频，处理静态图
+      if all_files:
+        latest = max(all_files, key=os.path.getctime)
+        src = os.path.basename(latest)
+        bg_video.visible = False
+        bg_video.pause()
+        bg_image.src = src
+        bg_image.visible = True
+        print(f"🖼️ 已更新图片壁纸: {src}")
+      else:
+        bg_video.visible = False
+        bg_video.pause()
+        bg_image.visible = False
+        print("🧹 未找到壁纸文件")
+        
+    page.update()
+
+'''
+m_content = re.sub(pattern, new_update, m_content, flags=re.DOTALL)
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(m_content)
+
+print("✅ main_final.py 已改为全异步视频加载，绝不卡死！")

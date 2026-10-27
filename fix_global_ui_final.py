@@ -1,0 +1,118 @@
+# fix_global_ui_final.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+pages_dir = os.path.join(BASE_DIR, "pages")
+theme_path = os.path.join(BASE_DIR, "ui_theme.py")
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+# ==================== 1. 强化 ui_theme.py，统一所有组件底色 ====================
+ui_theme_code = '''import flet as ft
+from core_api import CFG
+
+def get_ui_styles(theme_color):
+  material = CFG.get("ui_material", "default")
+  blur_val = CFG.get("blur_radius", 10)
+  brightness = CFG.get("bg_brightness", 128)
+  
+  # 统一卡片/控件的底色规则
+  if brightness > 150:
+    base_card_bg = ft.Colors.with_opacity(0.4, "#000000")
+    base_border = ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE))
+    nav_bg = ft.Colors.with_opacity(0.3, "#000000")
+  else:
+    base_card_bg = ft.Colors.with_opacity(0.08, ft.Colors.WHITE)
+    base_border = ft.border.all(1.5, ft.Colors.with_opacity(0.6, ft.Colors.WHITE))
+    nav_bg = ft.Colors.with_opacity(0.1, ft.Colors.WHITE)
+
+  # 终端日志框专用底色（统一成极透黑，带高光边框）
+  log_bg = ft.Colors.with_opacity(0.25, "#000000")
+  log_border = ft.border.all(1, ft.Colors.with_opacity(0.2, theme_color))
+
+  if material == "liquid":
+    if brightness > 150:
+      card_gradient = ft.LinearGradient(
+        begin=ft.alignment.top_left, end=ft.alignment.bottom_right,
+        colors=[ft.Colors.with_opacity(0.35, "#000000"), ft.Colors.with_opacity(0.15, "#000000")]
+      )
+    else:
+      card_gradient = ft.LinearGradient(
+        begin=ft.alignment.top_left, end=ft.alignment.bottom_right,
+        colors=[ft.Colors.with_opacity(0.15, ft.Colors.WHITE), ft.Colors.with_opacity(0.02, ft.Colors.WHITE)]
+      )
+      
+    return {
+      "type": "liquid",
+      "overlay_bg": ft.Colors.with_opacity(0.05, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": nav_bg, "side_bg": nav_bg,
+      "card_bg": card_gradient, "card_border": base_border,
+      "log_bg": log_bg, "log_border": log_border, "log_color": theme_color
+    }
+  else:
+    return {
+      "type": "default",
+      "overlay_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "overlay_blur": None,
+      "nav_bg": ft.Colors.with_opacity(0.4, "#0D1017"), "side_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "card_bg": base_card_bg, "card_border": base_border,
+      "log_bg": log_bg, "log_border": log_border, "log_color": "#00FFD1"
+    }
+
+def setup_page_style(page: ft.Page):
+  theme_color = CFG.get("theme_color", "#39C5BB")
+  page.bgcolor = ft.Colors.TRANSPARENT
+  return theme_color
+'''
+with open(theme_path, "w", encoding="utf-8") as f:
+  f.write(ui_theme_code)
+print("✅ ui_theme.py 已升级：统一了卡片、终端、背景的配色规则！")
+
+# ==================== 2. 暴力清洗 pages 目录下所有页面的写死颜色 ====================
+def clean_page_file(filepath):
+  if not os.path.exists(filepath): return
+  with open(filepath, "r", encoding="utf-8") as f:
+    content = f.read()
+
+  # 1. 修复终端黑框（把纯黑底色或死黑 bgcolor 替换为统一动态样式）
+  content = content.replace('bgcolor=ft.Colors.BLACK, color="#00FFD1"', 
+               'bgcolor=page.ui_style["log_bg"], color=page.ui_style["log_color"], border=page.ui_style["log_border"]')
+  content = content.replace('bgcolor="#05070A"', 'bgcolor=page.ui_style["log_bg"]')
+  
+  # 2. 修复所有卡片的背景（把死白底或深色底统一）
+  content = content.replace('bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE)', 'bgcolor=page.ui_style["card_bg"]')
+  content = content.replace('bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE)', 'bgcolor=page.ui_style["card_bg"]')
+  
+  # 3. 修复各种边框
+  content = content.replace('border=ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE))', 'border=page.ui_style["card_border"]')
+  
+  # 4. 修复侧边栏卡片的底色
+  content = content.replace('bgcolor=ft.Colors.with_opacity(0.15, ft.Colors.WHITE)', 'bgcolor=page.ui_style["card_bg"]')
+
+  with open(filepath, "w", encoding="utf-8") as f:
+    f.write(content)
+
+# 遍历 pages 下的所有 .py 文件（除了 __init__.py 和 ui_theme）
+for filename in os.listdir(pages_dir):
+  if filename.endswith(".py") and not filename.startswith("__"):
+    clean_page_file(os.path.join(pages_dir, filename))
+print("✅ 所有子页面代码已清洗，黑框和死板底色全部替换！")
+
+# ==================== 3. 修复侧边栏图标颜色 ====================
+with open(main_path, "r", encoding="utf-8") as f:
+  m_content = f.read()
+
+# 给 NavigationRail 统一加上图标颜色（亮色背景下用黑色，暗色背景下用白色）
+# 简单起见，我们直接使用 selected_label_text_style 的主题色来统一
+if 'unselected_icon_color="#FFFFFF"' not in m_content:
+  m_content = m_content.replace(
+    'unselected_label_text_style=ft.TextStyle(color="#FFFFFF", weight=ft.FontWeight.W_700, size=13, font_family="MiSans"),',
+    'unselected_label_text_style=ft.TextStyle(color="#FFFFFF", weight=ft.FontWeight.W_700, size=13, font_family="MiSans"),\n      unselected_icon_color="#FFFFFF", selected_icon_color=theme_color,'
+  )
+  print("✅ 侧边栏图标颜色已统一（高亮白+主题青）！")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(m_content)
+
+print("🚀 全局 UI 净化完毕！请重新运行 python main_final.py。")

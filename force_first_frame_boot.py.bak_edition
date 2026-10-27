@@ -1,0 +1,66 @@
+# force_first_frame_boot.py
+import os
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 找到 main 函数开头的初始化代码
+old_init = '''    # 🚨 初始化时，直接读取极小 Base64 封面
+    cover_b64 = CFG.get("small_cover_b64", "")
+    bg_image = ft.Image(
+        src_base64=cover_b64 if cover_b64 else None, 
+        fit=ft.ImageFit.COVER, 
+        expand=True, 
+        visible=bool(cover_b64)
+    )'''
+
+new_init = '''    # 🚨 核心核弹：启动时如果没有封面，强行从视频中截取第一帧转为 Base64
+    import base64
+    import subprocess
+    
+    cover_b64 = ""
+    cover_path = os.path.join(BASE_DIR, "assets", "wallpaper_cover.jpg")
+    
+    # 如果本地没有封面图，立刻用 FFmpeg 截取一张！
+    if not os.path.exists(cover_path):
+        video_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.mp4"))
+        if video_files:
+            latest_vid = max(video_files, key=os.path.getctime)
+            ffmpeg_exe = os.path.join(BASE_DIR, "bin", "ffmpeg", "ffmpeg.exe")
+            if os.path.exists(ffmpeg_exe):
+                print("⚡ 检测到启动无封面，正在强行提取视频第一帧...")
+                cmd = [ffmpeg_exe, "-ss", "0.1", "-i", latest_vid, "-vframes", "1", "-q:v", "2", "-y", cover_path]
+                try:
+                    subprocess.run(cmd, check=True, capture_output=True)
+                except: pass
+
+    # 如果有封面，立刻转 Base64
+    if os.path.exists(cover_path):
+        try:
+            with open(cover_path, "rb") as f:
+                cover_b64 = base64.b64encode(f.read()).decode()
+                print("✨ 成功将本地首帧转为 Base64！")
+        except: pass
+
+    bg_image = ft.Image(
+        src_base64=cover_b64 if cover_b64 else None, 
+        fit=ft.ImageFit.COVER, 
+        expand=True, 
+        visible=bool(cover_b64)
+    )'''
+
+if old_init in content:
+    content = content.replace(old_init, new_init)
+    print("✅ 已注入无中生有首帧提取逻辑！")
+else:
+    print("⚠️ 未找到精确匹配的初始化代码，尝试正则替换...")
+    # 兜底匹配
+    pattern = r'    # 🚨 初始化时，直接读取极小 Base64 封面.*?visible=bool\(cover_b64\)\s*\)'
+    content = re.sub(pattern, new_init, content, flags=re.DOTALL)
+    print("✅ 已通过正则完成兜底注入！")
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)

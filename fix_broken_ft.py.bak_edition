@@ -1,0 +1,39 @@
+# fix_broken_ft.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 修复第 55 行的 Logo 代码（把 fit="contain" 改成正规枚举）
+old_logo = 'ft.Image(src="assets/logo.png", width=48, height=48, fit="contain")'
+new_logo = 'ft.Image(src="assets/logo.png", width=48, height=48, fit=ft.ImageFit.CONTAIN)'
+
+if old_logo in content:
+    content = content.replace(old_logo, new_logo)
+    print("✅ 已修复 Logo 的 fit 参数格式！")
+
+# 2. 清理所有可能导致 ft 命名空间被污染的导入
+# 删掉奇奇怪怪的 import flet_desktop 等
+content = re.sub(r'^.*import flet_desktop.*$', '', content, flags=re.MULTILINE)
+content = re.sub(r'^.*from flet_desktop.*$', '', content, flags=re.MULTILINE)
+
+# 3. 强制确保最顶部有正确的 import flet as ft
+if "import flet as ft" not in content.split("\n")[0:10]:
+    # 如果前10行没有，就强行加在第一行
+    content = "import flet as ft\n" + content
+    print("✅ 已强制补全标准的 import flet as ft！")
+
+# 4. 检查是否有局部变量叫 ft 或者把 ft 重新赋值了
+if "ft = " in content:
+    print("⚠️ 警告：代码中存在 'ft = ' 赋值，可能污染了 Flet 模块引用！")
+    # 暴力删除可能存在的 ft 重新赋值
+    content = re.sub(r'^\s*ft\s*=\s*.*$', '', content, flags=re.MULTILINE)
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("🚀 修复完毕！请运行 python main_final.py 重新起飞！")

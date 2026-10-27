@@ -1,0 +1,80 @@
+﻿import re
+
+file_path = "main_final.py"
+with open(file_path, "r", encoding="utf-8") as f:
+  content = f.read()
+
+# 1. 确保引入 flet_video
+if "import flet_video" not in content:
+  content = content.replace("import flet", "import flet\nimport flet_video as ftv", 1)
+
+# 2. 修复所有基础组件被废弃的 API
+# 替换 src_base64 为本地路径直接加载（0.28.3 彻底废弃了 src_base64）
+content = re.sub(r'ft\.Image\(src_base64=LOGO_B64,.*?\)', 'ft.Image(src="assets/logo.png", width=48, height=48, fit="contain")', content)
+content = re.sub(r'src_base64=b64_data,', 'src=target_file,', content)
+
+# 替换所有被废弃的枚举（0.28.3 推荐使用字符串）
+content = content.replace("ft.ImageFit.CONTAIN", '"contain"')
+content = content.replace("ft.ImageFit.COVER", '"cover"')
+content = content.replace("ft.FilterQuality.HIGH", '"high"')
+
+# 修复启动入口 (0.28.3 支持 ft.app，但有些小版本可能要求 ft.run)
+content = re.sub(r'ft\.app\s*\(\s*target\s*=\s*main\s*,\s*assets_dir\s*=\s*["\']assets["\']\s*\)', 'ft.app(target=main, assets_dir="assets")', content)
+
+# 3. 彻底重写壁纸渲染函数，完美适配 0.28.3
+pattern = re.compile(r'def update_wallpaper_hot\(\):.*?page\.update_wallpaper_hot = update_wallpaper_hot', re.DOTALL)
+
+new_func = '''def update_wallpaper_hot():
+    import glob
+    import os
+    target_file = None
+
+    all_files = glob.glob(os.path.join(BASE_DIR, "assets", "wallpaper_*.*"))
+    if all_files:
+      target_file = max(all_files, key=os.path.getctime)
+      print(f"🖼️ 准备加载自定义壁纸: {os.path.basename(target_file)}")
+
+    if target_file and os.path.exists(target_file):
+      ext = os.path.splitext(target_file)[1].lower()
+      
+      if ext in ['.mp4', '.webm', '.mov']:
+        # 🚨 0.28.3 视频引擎标准写法
+        try:
+          media = ftv.VideoMedia(target_file)
+          new_bg = ftv.Video(
+            playlist=[media],
+            autoplay=True,
+            muted=True,
+            playlist_mode=ftv.PlaylistMode.LOOP
+          )
+          print("🎬 视频壁纸已加载 (0.28.3 兼容模式)")
+        except Exception as e:
+          print(f"❌ 视频加载失败: {e}")
+          new_bg = ft.Container(expand=True)
+      else:
+        new_bg = ft.Image(
+          src=target_file,
+          fit="cover"
+        )
+        print("🖼️ 图片壁纸已加载")
+      
+      new_bg.visible = True
+      main_stack.controls[0] = new_bg
+    else:
+      print("🧹 未找到壁纸文件，清空背景")
+      main_stack.controls[0] = ft.Container(expand=True)
+      
+    page.update()
+
+  page.update_wallpaper_hot = update_wallpaper_hot'''
+
+if pattern.search(content):
+  content = pattern.sub(new_func, content)
+  print("✅ 壁纸引擎已完美重构为 0.28.3 版本！")
+else:
+  print("⚠️ 未找到 update_wallpaper_hot 函数。")
+
+with open(file_path, "w", encoding="utf-8") as f:
+  f.write(content)
+
+print("✅ 代码修复完毕！")

@@ -1,0 +1,34 @@
+# fix_syntax_error.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+
+if os.path.exists(settings_path):
+    with open(settings_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 1. 修复被搞乱的 subprocess.run 语法
+    # 被改坏的样子：subprocess.run(\n    creationflags=..., cmd_cover, check=True, capture_output=True)
+    # 正确样子：subprocess.run(cmd_cover, check=True, capture_output=True, creationflags=...)
+    
+    pattern = r'subprocess\.run\(\s*creationflags=subprocess\.CREATE_NO_WINDOW if os\.name == \'nt\' else 0,\s*(.*?)\)'
+    
+    def replace_run(m):
+        args = m.group(1).strip()
+        return f"subprocess.run({args}, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)"
+
+    new_content = re.sub(pattern, replace_run, content)
+
+    # 2. 兜底，如果正则没匹配，直接用字符串替换
+    bad_str = "subprocess.run(\n    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0, cmd_cover, check=True, capture_output=True)"
+    good_str = "subprocess.run(cmd_cover, check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)"
+    
+    new_content = new_content.replace(bad_str, good_str)
+
+    with open(settings_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    print("✅ pages/settings.py 中的 subprocess.run 语法已修复！")
+else:
+    print("❌ 找不到 pages/settings.py")

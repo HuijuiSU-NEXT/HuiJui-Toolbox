@@ -1,0 +1,157 @@
+# fix_glass_elegance.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+dashboard_path = os.path.join(BASE_DIR, "pages", "dashboard.py")
+theme_path = os.path.join(BASE_DIR, "ui_theme.py")
+
+# ==================== 1. 重写 ui_theme.py：极致轻盈的玻璃质感 ====================
+ui_theme_code = '''import flet as ft
+from core_api import CFG
+
+def get_ui_styles(theme_color):
+  material = CFG.get("ui_material", "default")
+  blur_val = CFG.get("blur_radius", 10)
+  
+  if material == "frosted":
+    return {
+      "type": "frosted",
+      "overlay_bg": ft.Colors.with_opacity(0.15, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+      "side_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+      # 轻盈的白玻璃底色
+      "card_bg": ft.Colors.with_opacity(0.08, ft.Colors.WHITE),
+      "card_border": ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.4, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+  elif material == "liquid":
+    return {
+      "type": "liquid",
+      "overlay_bg": ft.Colors.with_opacity(0.05, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      # 侧边栏也保持轻盈
+      "nav_bg": ft.Colors.with_opacity(0.08, ft.Colors.WHITE),
+      "side_bg": ft.Colors.with_opacity(0.08, ft.Colors.WHITE),
+      # 极透的白底，让壁纸透出来
+      "card_bg": ft.Colors.with_opacity(0.06, ft.Colors.WHITE), 
+      # 高亮反光边框，勾勒出玻璃的轮廓
+      "card_border": ft.border.all(1.5, ft.Colors.with_opacity(0.6, ft.Colors.WHITE)), 
+      "log_bg": ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+      "log_color": theme_color
+    }
+  else:
+    return {
+      "type": "default",
+      "overlay_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "overlay_blur": None,
+      "nav_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "side_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "card_border": ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+
+def setup_page_style(page: ft.Page):
+  theme_color = CFG.get("theme_color", "#39C5BB")
+  page.bgcolor = ft.Colors.TRANSPARENT
+  return theme_color
+'''
+with open(theme_path, "w", encoding="utf-8") as f:
+  f.write(ui_theme_code)
+print("✅ ui_theme.py 已升级：底色极透，边框高亮，彻底告别黑胶布！")
+
+# ==================== 2. 重写 dashboard.py：文字加阴影，完美适配透明卡片 ====================
+dashboard_code = '''import flet as ft
+
+def build_dashboard(page: ft.Page, theme_color, scan_device, switch_tab, goto_sub_page):
+  cards_data = [
+    {"title": "一键刷机", "subtitle": "全自动向导页面", "icon": ft.Icons.BOLT, "route": "flash"},
+    {"title": "扫描设备", "subtitle": "读取手机状态与 Root", "icon": ft.Icons.PHONE_ANDROID, "route": "scan"},
+    {"title": "临时 Root", "subtitle": "KMI 无痕注入", "icon": ft.Icons.SECURITY, "route": "temp_root"},
+    {"title": "模块仓库", "subtitle": "797 个纯净模块", "icon": ft.Icons.EXTENSION, "route": "module_repo"},
+    {"title": "高级终端", "subtitle": "实时 Shell 执行", "icon": ft.Icons.TERMINAL, "route": "terminal"},
+    {"title": "Scrcpy 投屏", "subtitle": "USB / 无线投屏", "icon": ft.Icons.MONITOR, "route": "scrcpy"},
+    {"title": "分区刷入", "subtitle": "救砖/单刷指南", "icon": ft.Icons.BUILD_CIRCLE, "route": "flash_parts"},
+    {"title": "分区备份", "subtitle": "保护 boot / init_boot", "icon": ft.Icons.SAVE, "route": "backup"},
+    {"title": "无线调试", "subtitle": "TCPIP 与 IP 自动获取", "icon": ft.Icons.WIFI, "route": "wireless_adb"},
+    {"title": "模式切换", "subtitle": "Fastboot / Fastbootd", "icon": ft.Icons.SWAP_HORIZ, "route": "mode_switch"},
+    {"title": "驱动环境", "subtitle": "一键安装底层驱动", "icon": ft.Icons.BUILD, "route": "drivers"},
+    {"title": "急救中心", "subtitle": "9008 / BROM 救砖", "icon": ft.Icons.HEALTH_AND_SAFETY, "route": "rescue"},
+  ]
+
+  def handle_card_click(route):
+    if route == "flash":
+      switch_tab(1)
+    elif route == "scan":
+      scan_device()
+    elif route == "temp_root":
+      switch_tab(2)
+    else:
+      goto_sub_page(route)
+
+  grid = ft.GridView(
+    expand=1,
+    runs_count=3,
+    max_extent=250,
+    child_aspect_ratio=2.5,
+    spacing=15,
+    run_spacing=15,
+  )
+
+  for card in cards_data:
+    card_container = ft.Container(
+      content=ft.Column([
+        ft.Row([
+          ft.Icon(card["icon"], color=theme_color, size=20),
+          # 加上深色微小阴影，保证在浅色壁纸上也绝对清晰
+          ft.Text(card["title"], weight=ft.FontWeight.W_700, size=14, color="#FFFFFF", font_family="MiSans",
+              shadow=ft.BoxShadow(blur_radius=3, color=ft.Colors.with_opacity(0.8, "#000000"))),
+        ]),
+        # 副标题也一样加阴影
+        ft.Text(card["subtitle"], size=12, color=ft.Colors.WHITE70, font_family="MiSans",
+            shadow=ft.BoxShadow(blur_radius=3, color=ft.Colors.with_opacity(0.8, "#000000")))
+      ], alignment=ft.MainAxisAlignment.CENTER),
+      # 🚨 核心：背景极透，不加黑底，只靠阴影和边框
+      bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE),
+      border=ft.border.all(1, ft.Colors.with_opacity(0.4, ft.Colors.WHITE)),
+      border_radius=12,
+      padding=15,
+      on_click=lambda e, r=card["route"]: handle_card_click(r)
+    )
+    grid.controls.append(card_container)
+
+  return ft.Container(
+    content=ft.Column([
+      ft.Text("HuiJui Toolbox Edition", size=30, weight=ft.FontWeight.W_900, color="#FFFFFF", font_family="MiSans"),
+      ft.Text("Matrix Engine · 原生 GPU 渲染", size=13, color="#FFFFFF", weight=ft.FontWeight.W_600, font_family="MiSans"),
+      ft.Container(height=20),
+      grid
+    ]),
+    expand=True,
+    padding=20
+  )
+'''
+with open(dashboard_path, "w", encoding="utf-8") as f:
+  f.write(dashboard_code)
+print("✅ dashboard.py 已重写：文字加上深色投影，完美适配高透玻璃！")
+
+# ==================== 3. 修复 main_final.py 导航栏 ====================
+with open(main_path, "r", encoding="utf-8") as f:
+  m_content = f.read()
+
+# 导航栏文字加上阴影（Flet 0.28.3 Text 不支持 shadow，侧边栏只能用 TextTheme 解决，但这里我们保持纯白）
+old_nav = '''selected_label_text_style=ft.TextStyle(color=theme_color, weight=ft.FontWeight.W_900, size=14, font_family="MiSans"),
+      unselected_label_text_style=ft.TextStyle(color="#FFFFFF", weight=ft.FontWeight.W_600, size=13, font_family="MiSans"),'''
+# 侧边栏保持现状，因为在 sidebar 的 Container 边缘有阴影，一般不会看不清楚
+if old_nav in m_content:
+  print("ℹ️ 导航栏文字保持纯白加粗不变。")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(m_content)
+
+print("🚀 终极视觉质感修复完成！请重新运行 python main_final.py。")

@@ -1,0 +1,40 @@
+# fix_shadow_error.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dashboard_path = os.path.join(BASE_DIR, "pages", "dashboard.py")
+main_path = os.path.join(BASE_DIR, "main_final.py")
+
+def fix_file(filepath):
+    if not os.path.exists(filepath): return
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 1. 物理切除所有 Text 里的 shadow 参数
+    # 匹配形如 shadow=ft.BoxShadow(...) 的代码
+    content = re.sub(r',\s*shadow=ft\.BoxShadow\([^)]*\)', '', content)
+    
+    # 2. 顺便清理可能存在的 line_height 参数，防患于未然
+    content = re.sub(r',\s*line_height=[^,]+', '', content)
+
+    # 3. 确保副标题依然使用 MiSans 且清晰
+    old_text = '''ft.Text(
+                "Matrix Engine · 原生 GPU 渲染", 
+                size=13, 
+                color=ft.Colors.WHITE, 
+                weight=ft.FontWeight.W_600, 
+                font_family="MiSans"
+            )'''
+    
+    new_text = '''ft.Text("Matrix Engine · 原生 GPU 渲染", size=13, color=ft.Colors.WHITE, weight=ft.FontWeight.W_600, font_family="MiSans")'''
+
+    content = content.replace(old_text, new_text)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+    print(f"✅ 已成功修复 {os.path.basename(filepath)} 中的非法参数！")
+
+fix_file(dashboard_path)
+fix_file(main_path)
+print("🚀 修复完毕！请重新运行 python main_final.py")

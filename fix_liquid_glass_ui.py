@@ -1,0 +1,109 @@
+# fix_liquid_glass_ui.py
+import os
+import re
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+main_path = os.path.join(BASE_DIR, "main_final.py")
+settings_path = os.path.join(BASE_DIR, "pages", "settings.py")
+theme_path = os.path.join(BASE_DIR, "ui_theme.py")
+
+# ==================== 1. 重写 ui_theme.py：打造真正的液态玻璃材质 ====================
+ui_theme_code = '''import flet as ft
+from core_api import CFG
+
+def get_ui_styles(theme_color):
+  material = CFG.get("ui_material", "default")
+  blur_val = CFG.get("blur_radius", 10)
+  
+  if material == "frosted":
+    return {
+      "type": "frosted",
+      "overlay_bg": ft.Colors.with_opacity(0.15, "#0D1017"),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "side_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "card_border": ft.border.all(1, ft.Colors.with_opacity(0.3, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.4, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+  elif material == "liquid":
+    # 🚨 真·液态玻璃：高光渐变 + 极亮边框
+    return {
+      "type": "liquid",
+      "overlay_bg": ft.LinearGradient(
+        colors=[ft.Colors.with_opacity(0.05, theme_color), ft.Colors.with_opacity(0.2, "#0D1017")]
+      ),
+      "overlay_blur": ft.Blur(blur_val, blur_val, ft.BlurTileMode.MIRROR) if blur_val > 0 else None,
+      "nav_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+      "side_bg": ft.Colors.with_opacity(0.1, ft.Colors.WHITE),
+      # 渐变模拟玻璃反光
+      "card_bg": ft.LinearGradient(
+        begin=ft.alignment.top_left, end=ft.alignment.bottom_right,
+        colors=[ft.Colors.with_opacity(0.25, ft.Colors.WHITE), ft.Colors.with_opacity(0.05, ft.Colors.WHITE)]
+      ),
+      # 高亮发光边框
+      "card_border": ft.border.all(1.5, ft.Colors.with_opacity(0.8, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+      "log_color": theme_color
+    }
+  else:
+    return {
+      "type": "default",
+      "overlay_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "overlay_blur": None,
+      "nav_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "side_bg": ft.Colors.with_opacity(0.4, "#0D1017"),
+      "card_bg": ft.Colors.with_opacity(0.15, ft.Colors.WHITE),
+      "card_border": ft.border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.WHITE)),
+      "log_bg": ft.Colors.with_opacity(0.05, ft.Colors.BLACK),
+      "log_color": "#00FFD1"
+    }
+
+def setup_page_style(page: ft.Page):
+  theme_color = CFG.get("theme_color", "#39C5BB")
+  page.bgcolor = ft.Colors.TRANSPARENT
+  return theme_color
+'''
+with open(theme_path, "w", encoding="utf-8") as f:
+  f.write(ui_theme_code)
+print("✅ ui_theme.py 已升级为真·液态玻璃渐变引擎！")
+
+# ==================== 2. 修复 main_final.py 的导航栏字体 ====================
+with open(main_path, "r", encoding="utf-8") as f:
+  m_content = f.read()
+
+# 强制指定 MiSans 字体
+old_nav = '''selected_label_text_style=ft.TextStyle(color=theme_color, weight=ft.FontWeight.BOLD, size=12),
+      unselected_label_text_style=ft.TextStyle(color="#A0ABC0", size=12),'''
+new_nav = '''selected_label_text_style=ft.TextStyle(color=theme_color, weight=ft.FontWeight.BOLD, size=13, font_family="MiSans"),
+      unselected_label_text_style=ft.TextStyle(color=ft.Colors.WHITE70, size=12, font_family="MiSans"),'''
+
+if old_nav in m_content:
+  m_content = m_content.replace(old_nav, new_nav)
+  print("✅ 导航栏字体已强制锁定为 MiSans，并提亮未选中文字！")
+
+with open(main_path, "w", encoding="utf-8") as f:
+  f.write(m_content)
+
+# ==================== 3. 优化 settings.py 的输入框和下拉框质感 ====================
+with open(settings_path, "r", encoding="utf-8") as f:
+  s_content = f.read()
+
+# 颜色输入框
+s_content = s_content.replace(
+  'bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.4, theme_color), border_radius=8)',
+  'bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.6, ft.Colors.WHITE), border_radius=10)'
+)
+
+# 材质下拉框
+s_content = s_content.replace(
+  'bgcolor=ft.Colors.with_opacity(0.1, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.4, theme_color), border_radius=8, options=[',
+  'bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.WHITE), color="white", border_color=ft.Colors.with_opacity(0.6, ft.Colors.WHITE), border_radius=10, options=['
+)
+
+with open(settings_path, "w", encoding="utf-8") as f:
+  f.write(s_content)
+print("✅ settings.py 的输入框与下拉框已升级为高光玻璃质感！")
+
+print("🚀 终极视觉补丁注入完毕！请重新运行 python main_final.py。")

@@ -1,0 +1,39 @@
+# fix_hide_window.py
+import re
+
+main_path = "main_final.py"
+
+with open(main_path, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# 1. 在 main 函数最开头注入窗口隐藏
+if 'page.window.visible = False' not in content:
+    content = content.replace(
+        'def main(page: ft.Page):\n',
+        'def main(page: ft.Page):\n    page.window.visible = False\n'
+    )
+    print("✅ 已注入窗口隐藏逻辑！")
+
+# 2. 在最后一刻（UI 构建完成后），瞬间显示窗口
+old_end = '''    page.refresh_main_ui = refresh_main_ui
+    ui_container.content = build_main_ui()
+    page.update()'''
+
+new_end = '''    page.refresh_main_ui = refresh_main_ui
+    ui_container.content = build_main_ui()
+    page.update()
+    
+    # 🚨 终极闪现：渲染完毕后，瞬间显示窗口
+    import time
+    time.sleep(0.1) 
+    page.window.visible = True
+    page.update()'''
+
+if old_end in content:
+    content = content.replace(old_end, new_end)
+    print("✅ 已注入瞬间弹窗逻辑！")
+else:
+    print("⚠️ 未找到精确匹配的结尾，请检查代码。")
+
+with open(main_path, "w", encoding="utf-8") as f:
+    f.write(content)

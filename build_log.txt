@@ -1,0 +1,44 @@
+Nuitka-Options: Used command line options:
+Nuitka-Options:   --onefile --assume-yes-for-downloads --include-package-data=flet --include-data-dir=bin=bin --include-data-dir=assets=assets --windows-icon-from-ico=assets\logo.ico --windows-console-mode=hide --output-filename=HuiJui_Toolbox_Edition.exe main_final.py
+Nuitka: Starting Python compilation with:
+Nuitka:   Version '4.2.2' on Python 3.13 (flavor 'CPython Official') commercial grade 'not installed'.
+Nuitka:WARNING: Nuitka '4.2.2' is older than the latest stable release '4.3.1'.
+Nuitka:WARNING:     Complex topic! More information can be found at [94mhttps://nuitka.net/info/outdated-nuitka-version.html[0m
+Nuitka-Plugins:anti-bloat: Not including 'PIL.ImageQt' automatically in order to avoid bloat, but this may cause: PIL will not be able to create Qt image objects.
+Nuitka-Plugins:anti-bloat: Not including 'PIL.ImageTk' automatically in order to avoid bloat, but this may cause: PIL will not be able to create Tk image objects.
+Nuitka-Plugins:dll-files: Found 81 files DLLs from flet_desktop installation.
+Nuitka: Completed Python level compilation and optimization.
+Nuitka: Generating source code for C backend compiler.
+Nuitka: Running data composer tool for optimal constant value handling.
+Nuitka: Running C compilation via Scons.
+Nuitka-Scons: Non downloaded winlibs-gcc 'C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\gcc.exe' is being ignored, Nuitka is very dependent on the precise one.
+Nuitka-Scons: Backend C compiler: ~\AppData\Local\Nuitka\Nuitka\Cache\DOWNLO~1\pip\private-dc688c34\Lib\site-packages\ziglang\zig.exe (zig.exe 0.16.0).
+Nuitka-Scons: Backend C linking with 495 files (no progress information available for this stage).
+Nuitka-Postprocessing: Adding 6 icon(s) from icon file 'assets\logo.ico'.
+Nuitka-Options: Included 15 data files due to specified data dir 'bin' on command line.
+Nuitka-Options: Included data file 'assets\aurora.riv' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\default_wallpaper.jpg' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\logo.ico' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\logo.png' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\logo_android.png' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\wallpaper_1792995373.mp4' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\wallpaper_cover.jpg' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\fonts\MiSans-Bold.ttf' due to specified data dir 'assets' on command line.
+Nuitka-Options: Included data file 'assets\fonts\MiSans-Regular.ttf' due to specified data dir 'assets' on command line.
+Nuitka-Plugins:data-files: Included data file 'certifi\cacert.pem' due to package data for 'certifi'.
+Nuitka-Plugins:data-files: Included 13 data files due to package data directory 'app/flet/data' for 'flet_desktop'.
+Nuitka-Plugins:data-files: Included data file 'flet_desktop\app\flet\data\flutter_assets\AssetManifest.bin' due to package data for 'flet_desktop'.
+Nuitka-Plugins:data-files: Included data file 'flet_desktop\app\flet\data\app.so' due to package data for 'flet_desktop'.
+Nuitka-Onefile: Creating single file from dist folder, this may take a while.
+Nuitka-Onefile: Running bootstrap binary compilation via Scons.
+Nuitka-Onefile: Using compression for onefile payload.
+Nuitka-Onefile: Onefile payload compression ratio (55.21%) size 295185100 to 162959760.
+Nuitka-Inclusion:WARNING: Cannot find Windows Runtime DLLs to include, requiring them to be installed on target systems.
+Nuitka-Scons: Non downloaded winlibs-gcc 'C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin\gcc.exe' is being ignored, Nuitka is very dependent on the precise one.
+Nuitka-Scons: Onefile C compiler: ~\AppData\Local\Nuitka\Nuitka\Cache\DOWNLO~1\pip\private-dc688c34\Lib\site-packages\ziglang\zig.exe (zig.exe 0.16.0).
+Nuitka-Scons: Onefile C linking with 2 files (no progress information available for this stage).
+Nuitka-Postprocessing: Adding 6 icon(s) from icon file 'assets\logo.ico'.
+Nuitka-Onefile: Keeping onefile build directory 'main_final.onefile-build'.
+Nuitka: Keeping dist folder 'main_final.dist' for inspection, no need to use it.
+Nuitka: Keeping build directory 'main_final.build'.
+Nuitka: Successfully created 'D:\Huijui-Toolbox-Next\HuiJui_Toolbox_Edition.exe'.

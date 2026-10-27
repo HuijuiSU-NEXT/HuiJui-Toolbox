@@ -1,0 +1,146 @@
+# fix_temp_root_v2.py  ·  第二轮加固：run_cmd 超时 + log 批量刷新
+# 铁律 3 合规：精确 str.replace，先备份，语法预检通过才写回
+
+import os
+import shutil
+import sys
+
+TARGET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages", "temp_root.py")
+
+OLD_LOG = (
+    '    def log(msg):\n'
+    '        log_area.value += msg + "\\n"\n'
+    '        page.update()'
+)
+
+NEW_LOG = (
+    '    _log_lock = threading.Lock()\n'
+    '    _log_buf = []\n'
+    '    _log_last = [0.0]\n'
+    '\n'
+    '    def _flush_log():\n'
+    '        with _log_lock:\n'
+    '            if not _log_buf:\n'
+    '                return\n'
+    '            log_area.value += "\\n".join(_log_buf) + "\\n"\n'
+    '            _log_buf.clear()\n'
+    '            _log_last[0] = time.time()\n'
+    '        try:\n'
+    '            page.update()\n'
+    '        except Exception:\n'
+    '            pass\n'
+    '\n'
+    '    def log(msg):\n'
+    '        with _log_lock:\n'
+    '            _log_buf.append(msg)\n'
+    '            should = (time.time() - _log_last[0] > 0.15) or (len(_log_buf) >= 20)\n'
+    '        if should:\n'
+    '            _flush_log()'
+)
+
+OLD_RUN = (
+    '    def run_cmd(cmd):\n'
+    "        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0\n"
+    '        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding=\'utf-8\', errors=\'replace\', creationflags=creationflags)\n'
+    '        out = ""\n'
+    "        for line in iter(proc.stdout.readline, ''):\n"
+    '            if line:\n'
+    '                log(line.strip())\n'
+    '                out += line\n'
+    '        proc.wait()\n'
+    '        return proc.returncode, out'
+)
+
+NEW_RUN = (
+    '    def run_cmd(cmd, timeout=600):\n'
+    "        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0\n"
+    '        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding=\'utf-8\', errors=\'replace\', creationflags=creationflags)\n'
+    '        out_parts = []\n'
+    '\n'
+    '        def _reader():\n'
+    '            try:\n'
+    "                for line in iter(proc.stdout.readline, ''):\n"
+    '                    if line:\n'
+    '                        log(line.strip())\n'
+    '                        out_parts.append(line)\n'
+    '            except Exception:\n'
+    '                pass\n'
+    '\n'
+    '        rt = threading.Thread(target=_reader, daemon=True)\n'
+    '        rt.start()\n'
+    '        timed_out = False\n'
+    '        try:\n'
+    '            proc.wait(timeout=timeout)\n'
+    '        except subprocess.TimeoutExpired:\n'
+    '            timed_out = True\n'
+    '            log(f"⚠️ 命令超时 ({timeout}s)，强制终止")\n'
+    '            try:\n'
+    '                proc.kill()\n'
+    '            except Exception:\n'
+    '                pass\n'
+    '        try:\n'
+    '            rt.join(timeout=3)\n'
+    '        except Exception:\n'
+    '            pass\n'
+    '        _flush_log()\n'
+    '        if timed_out:\n'
+    '            return -1, "".join(out_parts)\n'
+    '        return proc.returncode, "".join(out_parts)'
+)
+
+REPLACEMENTS = [
+    (OLD_LOG, NEW_LOG, "log() 改为带锁批量刷（150ms 或 20 行）"),
+    (OLD_RUN, NEW_RUN, "run_cmd() 加 600s 超时 + 独立读线程 + 结束强刷日志"),
+]
+
+
+def main():
+    if not os.path.isfile(TARGET):
+        print(f"[X] 找不到目标文件: {TARGET}")
+        sys.exit(1)
+
+    with open(TARGET, "r", encoding="utf-8") as f:
+        content = f.read()
+    original = content
+
+    print("=" * 60)
+    print(f"目标: {TARGET}")
+    print("=" * 60)
+
+    failed = []
+    for old, new, desc in REPLACEMENTS:
+        if old in content:
+            content = content.replace(old, new, 1)
+            print(f"[OK]   {desc}")
+        else:
+            failed.append(desc)
+            print(f"[FAIL] {desc} —— 源片段未匹配")
+
+    if failed:
+        print("\n[!] 有替换失败，为保护源文件，本次不写回。")
+        print("    请把 [FAIL] 行贴给 AI 重新对齐。")
+        sys.exit(2)
+
+    if content == original:
+        print("\n[!] 内容无变化，可能已经修过了。")
+        return
+
+    try:
+        compile(content, TARGET, "exec")
+    except SyntaxError as e:
+        print(f"\n[X] 语法预检失败，不写回: {e}")
+        sys.exit(3)
+
+    backup = TARGET + ".bak2"
+    shutil.copy2(TARGET, backup)
+    print(f"\n[OK]   原文件已备份 → {backup}")
+
+    with open(TARGET, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+    print(f"[OK]   已写回 → {TARGET}")
+    print("\n[✅] 第二轮加固完成！下一步：python main_final.py 复测")
+    print("     想回滚：copy pages\\temp_root.py.bak2 pages\\temp_root.py")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,21 +1,36 @@
-# 忽略 bin 下的所有第三方二进制大文件
-bin/ffmpeg/
-bin/*.dll
-bin/*.exe
-bin/*.zip
-bin/scrcpy-server
-
-# Python 缓存与虚拟环境
-__pycache__/
-*.py[cod]
+# ====== 忽略虚拟环境 ======
 venv/
-.venv/
+venv_pack/
+venv_android/
+venv_linux/
+__pycache__/
+*.pyc
 
-# 构建产物和本地配置
+# ====== 忽略 Python 打包产物 ======
 dist/
 build/
+*.dist/
+*.build/
+*.onefile-build/
 *.spec
+crash_log.txt
+nuitka-crash-report.xml
+
+# ====== 忽略巨大的可执行文件和压缩包 ======
+*.exe
+*.zip
+*.7z
+
+# ====== 忽略底层军火库 (体积太大，GitHub装不下) ======
+bin/
+mtkclient/
+
+# ====== 忽略巨大的视频和背景图资源 ======
+assets/wallpaper_*.mp4
+assets/*.bak*
+assets/wallpaper_cover.jpg
+
+# ====== 忽略系统级缓存 ======
+.vscode/
+.idea/
 *.log
-data/*.db
-backups/
-temp_pull/

@@ -1,0 +1,61 @@
+import os
+import shutil
+import sys
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+TARGET = os.path.join(BASE, "main_final.py")
+
+OLD_SCAN = '''        def scan_device(e=None):
+            status_dot.bgcolor = "#F0A030"
+            device_status_text.value = "扫描中..."
+            loading_ring.visible = True
+            def run():
+                res = scan_device_data()
+                apply_device_state(res, manual=True)
+            threading.Thread(target=run, daemon=True).start()'''
+
+NEW_SCAN = '''        def scan_device(e=None):
+            status_dot.bgcolor = "#F0A030"
+            device_status_text.value = "扫描中..."
+            loading_ring.visible = True
+            try: page.update()
+            except: pass
+
+            def run():
+                try:
+                    res = scan_device_data()
+                    apply_device_state(res, manual=True)
+                except Exception as ex:
+                    print(f"[!] 扫描异常: {ex}")
+                    device_status_text.value = f"扫描失败: {ex}"
+                    status_dot.bgcolor = "#E05070"
+                    try: page.update()
+                    except: pass
+            threading.Thread(target=run, daemon=True).start()'''
+
+def main():
+    if not os.path.isfile(TARGET):
+        print(f"[X] 找不到 {TARGET}")
+        sys.exit(1)
+    with open(TARGET, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    if OLD_SCAN not in content:
+        print("[!] 没找到 scan_device 代码块，源文件可能被改过")
+        sys.exit(2)
+
+    content = content.replace(OLD_SCAN, NEW_SCAN, 1)
+
+    try:
+        compile(content, TARGET, "exec")
+    except SyntaxError as e:
+        print(f"[X] 语法预检失败: {e}")
+        sys.exit(3)
+
+    shutil.copy2(TARGET, TARGET + ".bak_scan")
+    with open(TARGET, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
+    print("[✅] 扫描功能修复完成！备份为 main_final.py.bak_scan")
+
+if __name__ == "__main__":
+    main()
